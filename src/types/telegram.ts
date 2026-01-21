@@ -17,6 +17,15 @@ export interface Chat {
   lastMessage?: string;
 }
 
+export interface MediaInfo {
+  media_type: 'photo' | 'video' | 'audio' | 'voice' | 'document' | 'sticker' | 'videonote' | 'other';
+  file_path?: string;
+  file_name?: string;
+  file_size?: number;
+  mime_type?: string;
+  thumbnail_path?: string;
+}
+
 export interface Message {
   id: number;
   chat_id: number;
@@ -30,6 +39,7 @@ export interface Message {
   has_media: boolean;
   media_type?: string;
   media_id?: string;
+  media?: MediaInfo[];
 }
 
 export interface AccountInfo {

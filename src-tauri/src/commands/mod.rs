@@ -6,8 +6,10 @@ pub mod auth;
 pub mod settings;
 pub mod chats;
 pub mod messages;
+pub mod media;
 
 pub use auth::*;
 pub use settings::*;
 pub use chats::*;
 pub use messages::*;
+pub use media::*;

@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useTauriCommand } from '../../hooks/useTauriCommand';
-import { Message } from '../../types/telegram';
+import { Message, MediaInfo } from '../../types/telegram';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import './MessageList.css';
 
 interface MessageListProps {
@@ -8,6 +9,148 @@ interface MessageListProps {
   chatId: number;
   chatTitle: string;
 }
+
+// Компонент для рендеринга медиа
+const MediaAttachment = ({ media, accountId, chatId, messageId }: {
+  media: MediaInfo;
+  accountId: string;
+  chatId: number;
+  messageId: number;
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [loadedMedia, setLoadedMedia] = useState<MediaInfo | null>(null);
+  const downloadMedia = useTauriCommand<MediaInfo[] | null, {
+    accountId: string;
+    chatId: number;
+    messageId: number;
+  }>('download_media');
+
+  // Автоматически загружаем медиа при монтировании компонента
+  useEffect(() => {
+    // Проверяем, нужно ли загружать медиа
+    const needsDownload = !media.file_path || media.file_path.trim() === '';
+
+    if (needsDownload && !loadedMedia && !loading) {
+      console.log('[MediaAttachment] Auto-downloading media for message:', messageId);
+
+      const autoDownload = async () => {
+        try {
+          setLoading(true);
+          console.log('[MediaAttachment] Requesting download for message:', messageId);
+
+          const downloaded = await downloadMedia({ accountId, chatId, messageId });
+
+          if (downloaded && downloaded.length > 0) {
+            console.log('[MediaAttachment] ✓ Media downloaded successfully:', downloaded[0]);
+            setLoadedMedia(downloaded[0]);
+          } else {
+            console.warn('[MediaAttachment] ⚠ No media returned from download');
+          }
+        } catch (error) {
+          console.error('[MediaAttachment] ✗ Failed to download media:', error);
+          console.error('[MediaAttachment] Error details:', {
+            messageId,
+            chatId,
+            accountId,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      autoDownload();
+    }
+  }, [media.file_path, accountId, chatId, messageId, loadedMedia, loading, downloadMedia]);
+
+  const currentMedia = loadedMedia || media;
+
+  // Показываем плейсхолдер только если файл еще не загружен
+  if (!currentMedia.file_path || currentMedia.file_path.trim() === '') {
+    return (
+      <div className="media-placeholder">
+        {loading ? (
+          <div>⏳ Загружаем {media.media_type}...</div>
+        ) : (
+          <div>📎 {media.media_type} (не удалось загрузить)</div>
+        )}
+      </div>
+    );
+  }
+
+  const fileSrc = convertFileSrc(currentMedia.file_path);
+
+  switch (media.media_type) {
+    case 'photo':
+      return (
+        <div className="media-photo">
+          <img
+            src={fileSrc}
+            alt={currentMedia.file_name || 'Photo'}
+            loading="lazy"
+            style={{ maxWidth: '100%', borderRadius: '8px' }}
+          />
+        </div>
+      );
+
+    case 'video':
+      return (
+        <div className="media-video">
+          <video
+            src={fileSrc}
+            controls
+            style={{ maxWidth: '100%', borderRadius: '8px' }}
+          />
+        </div>
+      );
+
+    case 'audio':
+    case 'voice':
+      return (
+        <div className="media-audio">
+          <audio src={fileSrc} controls style={{ width: '100%' }} />
+          {currentMedia.file_name && <div className="file-name">{currentMedia.file_name}</div>}
+        </div>
+      );
+
+    case 'document':
+      return (
+        <div className="media-document">
+          <a href={fileSrc} download={currentMedia.file_name} className="document-link">
+            📄 {currentMedia.file_name || 'Документ'}
+            {currentMedia.file_size && ` (${formatFileSize(currentMedia.file_size)})`}
+          </a>
+        </div>
+      );
+
+    case 'sticker':
+      return (
+        <div className="media-sticker">
+          <img
+            src={fileSrc}
+            alt="Sticker"
+            style={{ maxWidth: '200px', maxHeight: '200px' }}
+          />
+        </div>
+      );
+
+    default:
+      return (
+        <div className="media-other">
+          <a href={fileSrc} download={currentMedia.file_name}>
+            📎 {currentMedia.file_name || currentMedia.media_type}
+          </a>
+        </div>
+      );
+  }
+};
+
+// Вспомогательная функция для форматирования размера файла
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
 
 export const MessageList = ({ accountId, chatId, chatTitle }: MessageListProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -134,7 +277,31 @@ export const MessageList = ({ accountId, chatId, chatTitle }: MessageListProps) 
             className={`message ${message.is_outgoing ? 'outgoing' : 'incoming'}`}
           >
             <div className="message-bubble">
-              <div className="message-text">{message.text || '(медиа)'}</div>
+              {/* Рендер медиа-файлов */}
+              {message.media && message.media.length > 0 && (
+                <div className="message-media">
+                  {message.media.map((media, index) => (
+                    <MediaAttachment
+                      key={index}
+                      media={media}
+                      accountId={accountId}
+                      chatId={chatId}
+                      messageId={message.id}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Текст сообщения */}
+              {message.text && (
+                <div className="message-text">{message.text}</div>
+              )}
+
+              {/* Placeholder если нет ни текста, ни медиа */}
+              {!message.text && (!message.media || message.media.length === 0) && (
+                <div className="message-text text-muted">(пустое сообщение)</div>
+              )}
+
               <div className="message-meta">
                 {new Date(message.date * 1000).toLocaleTimeString('ru-RU', {
                   hour: '2-digit',

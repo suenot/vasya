@@ -58,6 +58,9 @@ pub struct AppState {
     pub db: Option<Arc<database::Database>>,
     /// Telegram client manager
     pub client_manager: Option<Arc<telegram::TelegramClientManager>>,
+    /// Logger guard (must be kept alive for logging to work)
+    #[allow(dead_code)]
+    _logger_guard: Option<tracing_appender::non_blocking::WorkerGuard>,
 }
 
 impl Default for AppState {
@@ -65,6 +68,7 @@ impl Default for AppState {
         Self {
             db: None,
             client_manager: None,
+            _logger_guard: None,
         }
     }
 }
@@ -78,13 +82,38 @@ fn greet(name: &str) -> String {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     load_env();
-    // Initialize logging
-    tracing_subscriber::fmt::init();
+
+    // Create logs directory
+    std::fs::create_dir_all("logs").expect("Failed to create logs directory");
+
+    // Initialize file logging with rotation
+    let file_appender = tracing_appender::rolling::daily("logs", "telegram-client.log");
+    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+
+    use tracing_subscriber::fmt::format::FmtSpan;
+
+    tracing_subscriber::fmt()
+        .with_writer(non_blocking)
+        .with_ansi(false)
+        .with_target(true)
+        .with_thread_ids(true)
+        .with_line_number(true)
+        .with_file(true)
+        .with_span_events(FmtSpan::FULL)
+        .with_max_level(tracing::Level::DEBUG)
+        .init();
+
+    tracing::info!("=== Telegram Client Started ===");
+    tracing::info!("Version: {}", env!("CARGO_PKG_VERSION"));
+
+    // Create initial state with logger guard
+    let mut initial_state = AppState::default();
+    initial_state._logger_guard = Some(guard);
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
-        .manage(Arc::new(RwLock::new(AppState::default())))
+        .manage(Arc::new(RwLock::new(initial_state)))
         .invoke_handler(tauri::generate_handler![
             greet,
             commands::request_login_code,
@@ -94,6 +123,7 @@ pub fn run() {
             commands::update_api_credentials,
             commands::get_chats,
             commands::get_messages,
+            commands::download_media,
         ])
         .setup(|app| {
             // Initialize database

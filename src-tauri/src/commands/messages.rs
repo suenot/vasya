@@ -8,6 +8,16 @@ use grammers_client::types::Message as GrammersMessage;
 use grammers_session::defs::PeerRef;
 
 use crate::AppState;
+use grammers_client::types::Media;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MediaInfo {
+    pub media_type: String,
+    pub file_path: Option<String>,
+    pub file_name: Option<String>,
+    pub file_size: Option<u64>,
+    pub mime_type: Option<String>,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Message {
@@ -17,6 +27,59 @@ pub struct Message {
     pub text: Option<String>,
     pub date: i64,
     pub is_outgoing: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub media: Option<Vec<MediaInfo>>,
+}
+
+/// Extract media information from a message
+fn extract_media_info(msg: &GrammersMessage) -> Option<Vec<MediaInfo>> {
+    msg.media().and_then(|media| {
+        let media_info = match media {
+            // Skip WebPage media - these are link previews, not downloadable media
+            Media::WebPage(_) => return None,
+            Media::Photo(_) => MediaInfo {
+                media_type: "photo".to_string(),
+                file_path: None, // TODO: Download and set path
+                file_name: None,
+                file_size: None,
+                mime_type: Some("image/jpeg".to_string()),
+            },
+            Media::Document(doc) => {
+                let media_type = if let Some(mime) = doc.mime_type() {
+                    if mime.starts_with("video/") {
+                        "video"
+                    } else if mime.starts_with("audio/") {
+                        if mime == "audio/ogg" {
+                            "voice"
+                        } else {
+                            "audio"
+                        }
+                    } else {
+                        "document"
+                    }
+                } else {
+                    "document"
+                };
+
+                MediaInfo {
+                    media_type: media_type.to_string(),
+                    file_path: None, // TODO: Download and set path
+                    file_name: None, // TODO: Extract from attributes
+                    file_size: Some(doc.size() as u64),
+                    mime_type: doc.mime_type().map(|s| s.to_string()),
+                }
+            }
+            _ => MediaInfo {
+                media_type: "other".to_string(),
+                file_path: None,
+                file_name: None,
+                file_size: None,
+                mime_type: None,
+            },
+        };
+
+        vec![media_info]
+    })
 }
 
 /// Get messages from a chat
@@ -84,6 +147,7 @@ pub async fn get_messages(
             text: if msg.text().is_empty() { None } else { Some(msg.text().to_string()) },
             date: msg.date().timestamp(),
             is_outgoing: msg.outgoing(),
+            media: extract_media_info(&msg),
         });
 
         count += 1;
