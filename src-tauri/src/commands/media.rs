@@ -98,8 +98,17 @@ pub async fn download_media(
     })?;
 
     // Check if message has media
-    if message.media().is_none() {
-        tracing::warn!("Message {} has no media", message_id);
+    let media = match message.media() {
+        Some(m) => m,
+        None => {
+            tracing::warn!("Message {} has no media", message_id);
+            return Ok(None);
+        }
+    };
+
+    // Skip WebPage media - these are link previews, not downloadable files
+    if matches!(media, grammers_client::types::Media::WebPage(_)) {
+        tracing::info!("Message {} has WebPage media (link preview), skipping download", message_id);
         return Ok(None);
     }
 
@@ -118,9 +127,8 @@ pub async fn download_media(
     // Generate filename with proper extension based on media type
     let timestamp = chrono::Utc::now().timestamp();
 
-    // Determine file extension from media type
-    let media_ref = message.media().unwrap();
-    let extension = match media_ref {
+    // Determine file extension from media type (we already have media from above check)
+    let extension = match &media {
         grammers_client::types::Media::Photo(_) => {
             tracing::debug!("Media type: Photo");
             "jpg".to_string()
@@ -165,8 +173,7 @@ pub async fn download_media(
     // Download media using Client::download_media for better control
     tracing::info!("Starting media download using Client API...");
 
-    let media = message.media().unwrap();
-
+    // media is already available from the earlier check
     match wrapper.client.download_media(&media, &file_path).await {
         Ok(()) => {
             tracing::info!("✓ Media downloaded successfully to: {:?}", absolute_path);
@@ -182,7 +189,7 @@ pub async fn download_media(
                 }
             }
 
-            // Get media info with absolute path
+            // Get media info with absolute path (for Tauri convertFileSrc)
             let media_info = extract_downloaded_media_info(&media, absolute_path.to_string_lossy().to_string());
 
             tracing::info!("Returning media info: {:?}", media_info);

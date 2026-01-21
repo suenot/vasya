@@ -33,10 +33,16 @@ pub struct Message {
 
 /// Extract media information from a message
 fn extract_media_info(msg: &GrammersMessage) -> Option<Vec<MediaInfo>> {
-    msg.media().and_then(|media| {
+    msg.media().map(|media| {
         let media_info = match media {
-            // Skip WebPage media - these are link previews, not downloadable media
-            Media::WebPage(_) => return None,
+            // WebPage previews - mark as webpage type so frontend can display link preview
+            Media::WebPage(_) => MediaInfo {
+                media_type: "webpage".to_string(),
+                file_path: None,
+                file_name: None,
+                file_size: None,
+                mime_type: None,
+            },
             Media::Photo(_) => MediaInfo {
                 media_type: "photo".to_string(),
                 file_path: None, // TODO: Download and set path

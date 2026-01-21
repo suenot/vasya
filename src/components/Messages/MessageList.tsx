@@ -27,6 +27,11 @@ const MediaAttachment = ({ media, accountId, chatId, messageId }: {
 
   // Автоматически загружаем медиа при монтировании компонента
   useEffect(() => {
+    // Не загружаем webpage - это просто превью ссылки
+    if (media.media_type === 'webpage') {
+      return;
+    }
+
     // Проверяем, нужно ли загружать медиа
     const needsDownload = !media.file_path || media.file_path.trim() === '';
 
@@ -78,9 +83,18 @@ const MediaAttachment = ({ media, accountId, chatId, messageId }: {
     );
   }
 
+  // convertFileSrc преобразует абсолютный путь в asset:// URL
   const fileSrc = convertFileSrc(currentMedia.file_path);
 
   switch (media.media_type) {
+    case 'webpage':
+      // WebPage preview - показываем как ссылку с иконкой
+      return (
+        <div className="media-webpage">
+          🔗 Link Preview
+        </div>
+      );
+
     case 'photo':
       return (
         <div className="media-photo">

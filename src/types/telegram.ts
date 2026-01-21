@@ -18,7 +18,7 @@ export interface Chat {
 }
 
 export interface MediaInfo {
-  media_type: 'photo' | 'video' | 'audio' | 'voice' | 'document' | 'sticker' | 'videonote' | 'other';
+  media_type: 'photo' | 'video' | 'audio' | 'voice' | 'document' | 'sticker' | 'videonote' | 'webpage' | 'other';
   file_path?: string;
   file_name?: string;
   file_size?: number;
