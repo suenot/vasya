@@ -1,0 +1,68 @@
+[package]
+name = "telegram-client"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "telegram_client_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# Tauri
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-fs = "2"
+
+# Telegram (из telegram-spy-rs)
+grammers-client = "0.8"
+grammers-session = "0.8"
+grammers-mtsender = "0.8"
+grammers-tl-types = "0.8"
+
+# Database - используем sqlite из grammers-session чтобы избежать конфликтов
+sqlite = "0.37"
+
+# Async runtime
+tokio = { version = "1.40", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "2.0"
+
+# UUID для account_id
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# Hashing
+sha2 = "0.10"
+hex = "0.4"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Regex для config.rs
+regex = "1.11"
+lazy_static = "1.5"
+
+# JSON5 для config.rs
+json5 = "0.4"
+
+dotenvy = "0.15"

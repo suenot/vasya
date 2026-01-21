@@ -1,0 +1,17 @@
+        <div className="messages-area">
+          {selectedChat && activeAccount ? (
+            <MessageList
+              accountId={activeAccount.id}
+              chatId={selectedChat.id}
+              chatTitle={selectedChat.title}
+            />
+          ) : (
+            <div className="empty-chat">
+              <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+                <circle cx="60" cy="60" r="50" fill="#E8E8E8"/>
+                <path d="M40 50 L80 50 M40 70 L70 70" stroke="#999" strokeWidth="4" strokeLinecap="round"/>
+              </svg>
+              <p>Выберите чат, чтобы начать общение</p>
+            </div>
+          )}
+        </div>
