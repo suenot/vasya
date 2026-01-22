@@ -135,18 +135,52 @@
 
 /* WebPage preview */
 .media-webpage {
+  display: flex;
+  gap: 12px;
   padding: 12px;
   background: rgba(102, 126, 234, 0.1);
   border-left: 3px solid #667eea;
   border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+.webpage-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.webpage-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.webpage-title {
   font-size: 14px;
+  font-weight: 500;
   color: #667eea;
   margin-bottom: 4px;
+}
+
+.webpage-url {
+  font-size: 12px;
+  color: #667eea;
+  text-decoration: none;
+  word-break: break-all;
+  opacity: 0.8;
+}
+
+.webpage-url:hover {
+  text-decoration: underline;
+  opacity: 1;
 }
 
 .message.outgoing .media-webpage {
   background: rgba(255, 255, 255, 0.2);
   border-left-color: white;
+}
+
+.message.outgoing .webpage-title,
+.message.outgoing .webpage-url {
   color: white;
 }
 

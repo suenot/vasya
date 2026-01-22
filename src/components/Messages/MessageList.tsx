@@ -11,11 +11,12 @@ interface MessageListProps {
 }
 
 // Компонент для рендеринга медиа
-const MediaAttachment = ({ media, accountId, chatId, messageId }: {
+const MediaAttachment = ({ media, accountId, chatId, messageId, messageText }: {
   media: MediaInfo;
   accountId: string;
   chatId: number;
   messageId: number;
+  messageText?: string;
 }) => {
   const [loading, setLoading] = useState(false);
   const [loadedMedia, setLoadedMedia] = useState<MediaInfo | null>(null);
@@ -70,6 +71,27 @@ const MediaAttachment = ({ media, accountId, chatId, messageId }: {
 
   const currentMedia = loadedMedia || media;
 
+  // WebPage preview - обрабатываем отдельно, т.к. не требует загрузки файла
+  if (media.media_type === 'webpage') {
+    // Пытаемся извлечь URL из текста сообщения
+    const urlMatch = messageText?.match(/(https?:\/\/[^\s]+)/);
+    const url = urlMatch ? urlMatch[1] : null;
+
+    return (
+      <div className="media-webpage">
+        <div className="webpage-icon">🔗</div>
+        <div className="webpage-content">
+          <div className="webpage-title">Link Preview</div>
+          {url && (
+            <a href={url} target="_blank" rel="noopener noreferrer" className="webpage-url">
+              {url.length > 50 ? url.substring(0, 50) + '...' : url}
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // Показываем плейсхолдер только если файл еще не загружен
   if (!currentMedia.file_path || currentMedia.file_path.trim() === '') {
     return (
@@ -87,13 +109,6 @@ const MediaAttachment = ({ media, accountId, chatId, messageId }: {
   const fileSrc = convertFileSrc(currentMedia.file_path);
 
   switch (media.media_type) {
-    case 'webpage':
-      // WebPage preview - показываем как ссылку с иконкой
-      return (
-        <div className="media-webpage">
-          🔗 Link Preview
-        </div>
-      );
 
     case 'photo':
       return (
@@ -301,6 +316,7 @@ export const MessageList = ({ accountId, chatId, chatTitle }: MessageListProps) 
                       accountId={accountId}
                       chatId={chatId}
                       messageId={message.id}
+                      messageText={message.text}
                     />
                   ))}
                 </div>
