@@ -21,11 +21,14 @@ CREATE TABLE IF NOT EXISTS chats (
     title TEXT NOT NULL,
     username TEXT,
     photo_id TEXT,
+    avatar_path TEXT,                 -- Локальный путь к аватарке
+    last_message TEXT,                -- Текст последнего сообщения
     unread_count INTEGER DEFAULT 0,
     last_message_id INTEGER,
     last_message_date INTEGER,
     pinned BOOLEAN DEFAULT 0,
     is_focus BOOLEAN DEFAULT 0,       -- Для режима "фокус"
+    packed_peer TEXT NOT NULL DEFAULT "", -- Packed peer representation for grammers
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
     PRIMARY KEY (id, account_id),

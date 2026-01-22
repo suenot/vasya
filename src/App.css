@@ -2,41 +2,121 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  
+  /* Telegram Light Theme Colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f4f4f5;
+  --bg-tertiary: #f1f1f1;
+  --sidebar-bg: #ffffff;
+  --sidebar-hover: #f4f4f5;
+  --sidebar-active: #3390ec;
+  --sidebar-active-text: #ffffff;
+  
+  --text-primary: #000000;
+  --text-secondary: #707579;
+  --text-tertiary: #aaaaaa;
+  
+  --accent-color: #3390ec;
+  --accent-hover: #2b7cc9;
+  
+  --border-color: #dfe1e5;
+  
+  --message-out-bg: #eeffde;
+  --message-in-bg: #ffffff;
+  --message-shadow: rgba(114, 114, 114, 0.16);
+  
+  --scroll-thumb: #c1c1c1;
+  --scroll-track: transparent;
+
+  font-family: var(--font-family);
   font-size: 14px;
-  line-height: 1.5;
-  font-weight: 400;
+  line-height: normal;
+}
 
-  color: #222;
-  background-color: #fff;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
+:root[data-theme="dark"] {
+  /* Telegram Dark Theme Colors */
+  --bg-primary: #0f171e;
+  --bg-secondary: #17212b;
+  --bg-tertiary: #1b2733;
+  --sidebar-bg: #17212b;
+  --sidebar-hover: #232e3c;
+  --sidebar-active: #2b5278;
+  --sidebar-active-text: #ffffff;
+  
+  --text-primary: #ffffff;
+  --text-secondary: #7f91a4;
+  --text-tertiary: #607990;
+  
+  --accent-color: #5288c1;
+  --accent-hover: #60a0e0;
+  
+  --border-color: #0f171e;
+  
+  --message-out-bg: #2b5278;
+  --message-in-bg: #182533;
+  --message-shadow: rgba(16, 22, 26, 0.2);
+  
+  --scroll-thumb: #3a4b5d;
 }
 
 body {
   margin: 0;
   padding: 0;
   overflow: hidden;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  font-smoothing: antialiased;
+  -webkit-font-smoothing: antialiased;
 }
 
 #root,
 .app {
   width: 100vw;
   height: 100vh;
+  display: flex;
   overflow: hidden;
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #fff;
-    background-color: #212121;
-  }
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scroll-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  outline: none;
+  background: none;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+input {
+  outline: none;
+  border: none;
+  font-family: inherit;
 }

@@ -15,6 +15,7 @@ export interface Chat {
   unreadCount: number;
   chatType: 'user' | 'group' | 'channel';
   lastMessage?: string;
+  avatarPath?: string;
 }
 
 export interface MediaInfo {

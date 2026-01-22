@@ -19,6 +19,7 @@ pub struct TelegramClientWrapper {
     pub account_id: String,
     pub phone: String,
     pub user_info: Option<UserInfo>,
+    pub peers: Arc<RwLock<HashMap<i64, grammers_client::types::Peer>>>,
     // Don't store SenderPool here - it's been destructured for runner
 }
 
@@ -70,6 +71,7 @@ impl TelegramClientManager {
             account_id: account_id.clone(),
             phone: phone.clone(),
             user_info: None,
+            peers: Arc::new(RwLock::new(HashMap::new())),
         });
 
         // Store client
@@ -160,6 +162,7 @@ impl TelegramClientManager {
                         account_id: account_id.clone(),
                         phone: String::new(), // Unknown until we query user info
                         user_info: None,
+                        peers: Arc::new(RwLock::new(HashMap::new())),
                     });
 
                     // Store client

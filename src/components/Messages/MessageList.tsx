@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useTauriCommand } from '../../hooks/useTauriCommand';
 import { Message, MediaInfo } from '../../types/telegram';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { MessageInput } from './MessageInput';
 import './MessageList.css';
 
 interface MessageListProps {
@@ -202,6 +203,7 @@ export const MessageList = ({ accountId, chatId, chatTitle }: MessageListProps) 
       try {
         setLoading(true);
         setError('');
+        setMessages([]); // Очищаем старые сообщения при смене чата
         console.log('[MessageList] Loading messages for chat:', chatId);
 
         const fetchedMessages = await getMessages({
@@ -223,7 +225,7 @@ export const MessageList = ({ accountId, chatId, chatTitle }: MessageListProps) 
     };
 
     loadInitialMessages();
-  }, [chatId, accountId]);
+  }, [chatId, accountId, getMessages]);
 
   // Прокрутка вниз при первой загрузке
   useEffect(() => {
@@ -268,6 +270,15 @@ export const MessageList = ({ accountId, chatId, chatTitle }: MessageListProps) 
     }
   };
 
+  // Обработчик отправки нового сообщения
+  const handleMessageSent = useCallback((newMessage: Message) => {
+    setMessages(prev => [...prev, newMessage]);
+    // Прокрутка вниз к новому сообщению
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  }, []);
+
   if (loading) {
     return (
       <div className="messages-loading">
@@ -293,56 +304,82 @@ export const MessageList = ({ accountId, chatId, chatTitle }: MessageListProps) 
   }
 
   return (
-    <div className="messages-container" onScroll={handleScroll}>
-      {loadingMore && (
-        <div className="loading-more">
-          <p>Загрузка старых сообщений...</p>
-        </div>
-      )}
-      <div className="messages-list">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`message ${message.is_outgoing ? 'outgoing' : 'incoming'}`}
-          >
-            <div className="message-bubble">
-              {/* Рендер медиа-файлов */}
-              {message.media && message.media.length > 0 && (
-                <div className="message-media">
-                  {message.media.map((media, index) => (
-                    <MediaAttachment
-                      key={index}
-                      media={media}
-                      accountId={accountId}
-                      chatId={chatId}
-                      messageId={message.id}
-                      messageText={message.text}
-                    />
-                  ))}
-                </div>
-              )}
+    <div className="messages-wrapper">
+      <div className="messages-container" onScroll={handleScroll}>
+        {loadingMore && (
+          <div className="loading-more">
+            <p>Загрузка старых сообщений...</p>
+          </div>
+        )}
+        <div className="messages-list">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`message ${message.is_outgoing ? 'outgoing' : 'incoming'}`}
+            >
+              <div className="message-content">
+                {/* Медиа вне bubble - как в оригинальном Telegram */}
+                {message.media && message.media.length > 0 && (
+                  <div className="message-media-standalone">
+                    {message.media.map((media, index) => (
+                      <MediaAttachment
+                        key={index}
+                        media={media}
+                        accountId={accountId}
+                        chatId={chatId}
+                        messageId={message.id}
+                        messageText={message.text}
+                      />
+                    ))}
+                  </div>
+                )}
 
-              {/* Текст сообщения */}
-              {message.text && (
-                <div className="message-text">{message.text}</div>
-              )}
+                {/* Текст в bubble - только если есть текст */}
+                {message.text && (
+                  <div className="message-bubble">
+                    <div className="message-text">{message.text}</div>
+                    <div className="message-meta">
+                      {new Date(message.date * 1000).toLocaleTimeString('ru-RU', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </div>
+                  </div>
+                )}
 
-              {/* Placeholder если нет ни текста, ни медиа */}
-              {!message.text && (!message.media || message.media.length === 0) && (
-                <div className="message-text text-muted">(пустое сообщение)</div>
-              )}
+                {/* Если только медиа без текста - показываем время под медиа */}
+                {!message.text && message.media && message.media.length > 0 && (
+                  <div className="message-meta-standalone">
+                    {new Date(message.date * 1000).toLocaleTimeString('ru-RU', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </div>
+                )}
 
-              <div className="message-meta">
-                {new Date(message.date * 1000).toLocaleTimeString('ru-RU', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
+                {/* Placeholder если нет ни текста, ни медиа */}
+                {!message.text && (!message.media || message.media.length === 0) && (
+                  <div className="message-bubble">
+                    <div className="message-text text-muted">(пустое сообщение)</div>
+                    <div className="message-meta">
+                      {new Date(message.date * 1000).toLocaleTimeString('ru-RU', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
+      <MessageInput
+        accountId={accountId}
+        chatId={chatId}
+        onMessageSent={handleMessageSent}
+      />
     </div>
   );
 };

@@ -1,22 +1,35 @@
+.messages-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
 .messages-container {
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  height: 100%; /* Занимаем всю доступную высоту */
-  min-height: 0; /* Позволяем flex-контейнеру сжиматься */
+  min-height: 0;
+  padding: 0 16px;
+  background: transparent;
+  /* Wallpaper is in MainLayout */
 }
 
 .messages-list {
-  padding: 16px;
+  padding: 16px 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
+  /* Tight gap for Telegram-like feel */
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .message {
   display: flex;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .message.outgoing {
@@ -27,36 +40,65 @@
   justify-content: flex-start;
 }
 
+.message-content {
+  display: flex;
+  flex-direction: column;
+  max-width: 85%;
+  align-items: flex-start;
+}
+
+.message.outgoing .message-content {
+  align-items: flex-end;
+}
+
 .message-bubble {
-  max-width: 65%;
-  padding: 8px 12px;
+  padding: 6px 12px 6px 14px;
   border-radius: 12px;
   word-wrap: break-word;
-  word-break: break-word; /* Разрываем длинные слова */
-  overflow-wrap: break-word; /* Современная альтернатива word-wrap */
+  word-break: break-word;
+  overflow-wrap: break-word;
+  box-shadow: 0 1px 2px var(--message-shadow);
+  position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .message.outgoing .message-bubble {
-  background: #667eea;
-  color: white;
+  background: var(--message-out-bg);
+  color: var(--text-primary);
   border-bottom-right-radius: 4px;
 }
 
 .message.incoming .message-bubble {
-  background: #e8eef7;
-  color: #333;
+  background: var(--message-in-bg);
+  color: var(--text-primary);
   border-bottom-left-radius: 4px;
 }
 
 .message-text {
-  margin-bottom: 4px;
-  line-height: 1.4;
+  line-height: 1.5;
+  font-size: 15px;
+  margin-right: 40px;
+  /* Space for time */
 }
 
 .message-meta {
   font-size: 11px;
-  opacity: 0.7;
-  text-align: right;
+  color: var(--text-secondary);
+  align-self: flex-end;
+  margin-top: -8px;
+  margin-left: 8px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.message.outgoing .message-meta {
+  color: #4fae4e;
+  /* Telegram green for checks */
+}
+
+:root[data-theme="dark"] .message.outgoing .message-meta {
+  color: #a0c3ff;
 }
 
 .messages-loading,
@@ -68,28 +110,56 @@
   justify-content: center;
   padding: 32px;
   text-align: center;
-  color: #999;
+  color: var(--text-tertiary);
 }
 
 .loading-more {
   padding: 12px;
   text-align: center;
-  color: #667eea;
+  color: var(--accent-color);
   font-size: 14px;
 }
 
-/* Медиа вложения */
-.message-media {
-  margin-bottom: 8px;
+/* Standalone Media */
+.message-media-standalone {
+  border-radius: 12px;
+  overflow: hidden;
+  max-width: 400px;
+  box-shadow: 0 1px 2px var(--message-shadow);
+  margin-bottom: 2px;
+}
+
+.message.outgoing .message-media-standalone {
+  border-bottom-right-radius: 4px;
+}
+
+.message.incoming .message-media-standalone {
+  border-bottom-left-radius: 4px;
 }
 
 .media-photo img,
 .media-video video {
   display: block;
-  max-width: 100%;
+  width: 100%;
   max-height: 400px;
-  border-radius: 8px;
   cursor: pointer;
+  object-fit: contain;
+  background: var(--bg-tertiary);
+}
+
+.message-meta-standalone {
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.4);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-top: -26px;
+  margin-right: 6px;
+  margin-bottom: 6px;
+  z-index: 2;
+  position: relative;
+  display: inline-block;
+  align-self: flex-end;
 }
 
 .media-sticker img {
@@ -102,24 +172,26 @@
 .media-audio,
 .media-document,
 .media-other {
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 8px;
+  padding: 10px;
+  background: var(--bg-secondary);
+  border-radius: 12px;
   margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 200px;
 }
 
 .message.outgoing .media-audio,
 .message.outgoing .media-document,
 .message.outgoing .media-other {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--message-out-bg);
 }
 
 .document-link {
-  color: inherit;
+  color: var(--accent-color);
   text-decoration: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  font-weight: 500;
   font-size: 14px;
 }
 
@@ -127,97 +199,52 @@
   text-decoration: underline;
 }
 
-.file-name {
-  font-size: 12px;
-  margin-top: 4px;
-  opacity: 0.8;
-}
-
 /* WebPage preview */
 .media-webpage {
   display: flex;
-  gap: 12px;
-  padding: 12px;
-  background: rgba(102, 126, 234, 0.1);
-  border-left: 3px solid #667eea;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: var(--bg-secondary);
+  border-left: 3px solid var(--accent-color);
   border-radius: 4px;
-  margin-bottom: 4px;
-}
-
-.webpage-icon {
-  font-size: 24px;
-  flex-shrink: 0;
-}
-
-.webpage-content {
-  flex: 1;
-  min-width: 0;
+  margin: 4px 0;
+  font-size: 14px;
 }
 
 .webpage-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: #667eea;
-  margin-bottom: 4px;
+  font-weight: 600;
+  color: var(--accent-color);
 }
 
 .webpage-url {
-  font-size: 12px;
-  color: #667eea;
+  color: var(--text-secondary);
   text-decoration: none;
-  word-break: break-all;
-  opacity: 0.8;
-}
-
-.webpage-url:hover {
-  text-decoration: underline;
-  opacity: 1;
-}
-
-.message.outgoing .media-webpage {
-  background: rgba(255, 255, 255, 0.2);
-  border-left-color: white;
-}
-
-.message.outgoing .webpage-title,
-.message.outgoing .webpage-url {
-  color: white;
+  font-size: 12px;
 }
 
 .media-placeholder {
   padding: 16px;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 8px;
+  background: var(--bg-tertiary);
+  border-radius: 12px;
   text-align: center;
   font-size: 14px;
-  opacity: 0.7;
+  color: var(--text-secondary);
   min-width: 200px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-.media-placeholder div {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* Анимация загрузки */
 @keyframes pulse {
-  0%, 100% {
-    opacity: 0.7;
+
+  0%,
+  100% {
+    opacity: 0.6;
   }
+
   50% {
     opacity: 1;
   }
 }
 
-.media-placeholder:has(div:contains("⏳")) {
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-.text-muted {
-  opacity: 0.5;
-  font-style: italic;
+.media-placeholder div {
+  animation: pulse 1.5s infinite;
 }

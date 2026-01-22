@@ -206,6 +206,100 @@ pub async fn download_media(
     }
 }
 
+/// Download chat/user profile photo
+#[tauri::command]
+pub async fn download_chat_photo(
+    account_id: String,
+    chat_id: i64,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<Option<String>, String> {
+    tracing::info!("===== DOWNLOAD_CHAT_PHOTO CALLED =====");
+    tracing::info!("Parameters: account_id={}, chat_id={}", account_id, chat_id);
+
+    let state_guard = state.read().await;
+    let client_manager = state_guard
+        .client_manager
+        .as_ref()
+        .ok_or("Client manager not initialized")?;
+
+    let wrapper = client_manager
+        .get_client(&account_id)
+        .await
+        .ok_or("Client not found for this account")?;
+
+    tracing::info!("Finding chat {}", chat_id);
+    // Find the chat
+    let mut dialogs = wrapper.client.iter_dialogs();
+    let mut target_peer = None;
+
+    while let Some(dialog) = dialogs.next().await
+        .map_err(|e| format!("Failed to iterate dialogs: {}", e))? {
+        let peer = &dialog.peer;
+        let id = PeerRef::from(peer).id.bot_api_dialog_id();
+
+        if id == chat_id {
+            tracing::info!("Found target chat: {}", chat_id);
+            target_peer = Some(peer.clone());
+            break;
+        }
+    }
+
+    let peer = target_peer.ok_or("Chat not found")?;
+
+    // Try to get profile photo
+    tracing::info!("Downloading profile photo for chat {}", chat_id);
+
+    // Create avatars directory
+    let avatars_dir = PathBuf::from("media").join("avatars");
+    tokio::fs::create_dir_all(&avatars_dir).await
+        .map_err(|e| format!("Failed to create avatars directory: {}", e))?;
+
+    let file_path = avatars_dir.join(format!("chat_{}.jpg", chat_id.abs()));
+
+    // Get absolute path for Tauri
+    let absolute_path = std::env::current_dir()
+        .map_err(|e| format!("Failed to get current directory: {}", e))?
+        .join(&file_path);
+
+    // Get and download the first profile photo
+    let mut photos = wrapper.client.iter_profile_photos(&peer);
+
+    match photos.next().await {
+        Ok(Some(photo)) => {
+            // Download the photo
+            match wrapper.client.download_media(&photo, &file_path).await {
+                Ok(()) => {
+                    tracing::info!("✓ Profile photo downloaded successfully to: {:?}", absolute_path);
+
+                    // Verify file exists
+                    match tokio::fs::metadata(&absolute_path).await {
+                        Ok(metadata) => {
+                            tracing::info!("✓ File verified, size: {} bytes", metadata.len());
+                            Ok(Some(absolute_path.to_string_lossy().to_string()))
+                        }
+                        Err(e) => {
+                            tracing::error!("✗ Downloaded file not found: {}", e);
+                            Ok(None)
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to download profile photo: {}", e);
+                    Ok(None)
+                }
+            }
+        }
+        Ok(None) => {
+            tracing::info!("No profile photo available for chat {}", chat_id);
+            Ok(None)
+        }
+        Err(e) => {
+            tracing::warn!("Error getting profile photos: {}", e);
+            Ok(None)
+        }
+    }
+}
+
 fn extract_downloaded_media_info(
     media: &grammers_client::types::Media,
     file_path: String,

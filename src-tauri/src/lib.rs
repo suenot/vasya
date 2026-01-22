@@ -122,8 +122,12 @@ pub fn run() {
             commands::logout,
             commands::update_api_credentials,
             commands::get_chats,
+            commands::get_cached_chats,
+            commands::start_loading_chats,
             commands::get_messages,
+            commands::send_message,
             commands::download_media,
+            commands::download_chat_photo,
         ])
         .setup(|app| {
             // Initialize database
