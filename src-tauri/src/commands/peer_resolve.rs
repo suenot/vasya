@@ -1,0 +1,42 @@
+//! Shared peer resolution logic
+//!
+//! Resolves a chat_id to a Peer using the peer cache first (O(1)),
+//! falling back to dialog iteration (O(n)) with progressive caching.
+
+use grammers_session::defs::PeerRef;
+use crate::telegram::client_manager::TelegramClientWrapper;
+
+/// Resolve a chat_id to a Peer, using cache first
+pub async fn resolve_peer(
+    wrapper: &TelegramClientWrapper,
+    chat_id: i64,
+) -> Result<grammers_client::types::Peer, String> {
+    // Check cache first (O(1))
+    {
+        let peers = wrapper.peers.read().await;
+        if let Some(peer) = peers.get(&chat_id) {
+            return Ok(peer.clone());
+        }
+    }
+
+    // Fallback: iterate dialogs, caching every peer along the way
+    tracing::warn!(chat_id = chat_id, "Peer not in cache, iterating dialogs");
+    let mut dialogs = wrapper.client.iter_dialogs();
+
+    while let Some(dialog) = dialogs
+        .next()
+        .await
+        .map_err(|e| format!("Failed to iterate dialogs: {}", e))?
+    {
+        let peer = &dialog.peer;
+        let id = PeerRef::from(peer).id.bot_api_dialog_id();
+
+        wrapper.peers.write().await.insert(id, peer.clone());
+
+        if id == chat_id {
+            return Ok(peer.clone());
+        }
+    }
+
+    Err(format!("Chat {} not found", chat_id))
+}

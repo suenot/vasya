@@ -1,20 +1,37 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { LoginForm } from './components/Auth/LoginForm';
 import { MainLayout } from './components/Layout/MainLayout';
 import { ApiSettings } from './components/Settings/ApiSettings';
 import { useSettingsStore } from './store/settingsStore';
 import { useAccountsStore } from './store/accountsStore';
 import { useThemeStore } from './store/themeStore';
+import { useConnectionStore } from './store/connectionStore';
 import { useSystemTheme } from './hooks/useSystemTheme';
+import { useTauriEvent } from './hooks/useTauriEvent';
 import { useTauriCommand } from './hooks/useTauriCommand';
 import "./App.css";
+
+interface ConnectionStatusEvent {
+  account_id: string;
+  status: 'connected' | 'disconnected' | 'reconnecting';
+}
 
 function App() {
   const { isConfigured, setApiCredentials } = useSettingsStore();
   const { getActiveAccount } = useAccountsStore();
   const { themeSetting, setEffectiveTheme } = useThemeStore();
+  const { setConnected, setDisconnected, setReconnecting } = useConnectionStore();
   const systemTheme = useSystemTheme();
   const updateApiCredentials = useTauriCommand<void, { api_id: number; api_hash: string }>('update_api_credentials');
+
+  // Track connection status from Rust backend
+  useTauriEvent<ConnectionStatusEvent>('connection-status', useCallback((evt) => {
+    switch (evt.status) {
+      case 'connected': setConnected(); break;
+      case 'disconnected': setDisconnected(); break;
+      case 'reconnecting': setReconnecting(); break;
+    }
+  }, [setConnected, setDisconnected, setReconnecting]));
 
   // Применяем тему при монтировании и изменении настроек
   useEffect(() => {

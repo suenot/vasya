@@ -288,13 +288,13 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
               style={{ cursor: 'pointer' }}
             >
               <div className="settings-profile-avatar">
-                {activeAccount?.phone?.substring(0, 2) || 'ME'}
+                {activeAccount?.userInfo?.first_name?.substring(0, 1)?.toUpperCase() || 'ME'}
               </div>
               <div className="settings-profile-info">
                 <div className="settings-profile-name">
-                  {activeAccount?.userInfo?.firstName || 'Пользователь'}
+                  {activeAccount?.userInfo?.first_name || 'Пользователь'}
                 </div>
-                <div className="settings-profile-phone">{activeAccount?.phone || ''}</div>
+                <div className="settings-profile-phone">{activeAccount?.userInfo?.phone || ''}</div>
               </div>
             </div>
 

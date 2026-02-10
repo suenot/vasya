@@ -15,6 +15,7 @@ interface AccountsStore {
   addAccount: (id: string, userInfo: UserInfo) => void;
   removeAccount: (id: string) => void;
   setActiveAccount: (id: string) => void;
+  clearActiveAccount: () => void;
   getActiveAccount: () => Account | null;
   updateAccountInfo: (id: string, userInfo: UserInfo) => void;
 }
@@ -68,6 +69,11 @@ export const useAccountsStore = create<AccountsStore>()(
           isActive: acc.id === id,
         })),
         activeAccountId: id,
+      })),
+
+      clearActiveAccount: () => set((state) => ({
+        accounts: state.accounts.map(acc => ({ ...acc, isActive: false })),
+        activeAccountId: null,
       })),
 
       getActiveAccount: () => {

@@ -10,8 +10,8 @@ export const ProfileSettings = ({ onClose }: ProfileSettingsProps) => {
   const { getActiveAccount } = useAccountsStore();
   const activeAccount = getActiveAccount();
 
-  const [firstName, setFirstName] = useState(activeAccount?.userInfo?.firstName || '');
-  const [lastName, setLastName] = useState(activeAccount?.userInfo?.lastName || '');
+  const [firstName, setFirstName] = useState(activeAccount?.userInfo?.first_name || '');
+  const [lastName, setLastName] = useState(activeAccount?.userInfo?.last_name || '');
   const [bio, setBio] = useState('');
   const [username, setUsername] = useState(activeAccount?.userInfo?.username || '');
 
@@ -38,7 +38,7 @@ export const ProfileSettings = ({ onClose }: ProfileSettingsProps) => {
           {/* Аватар */}
           <div className="profile-avatar-section">
             <div className="profile-avatar-large">
-              {activeAccount?.phone?.substring(0, 2) || 'ME'}
+              {activeAccount?.userInfo?.first_name?.substring(0, 1)?.toUpperCase() || 'ME'}
             </div>
             <button className="profile-avatar-upload">Загрузить фото</button>
           </div>
@@ -98,7 +98,7 @@ export const ProfileSettings = ({ onClose }: ProfileSettingsProps) => {
             <h3>Информация</h3>
             <div className="profile-info-item">
               <span className="profile-info-label">Телефон</span>
-              <span className="profile-info-value">{activeAccount?.phone || 'Не указан'}</span>
+              <span className="profile-info-value">{activeAccount?.userInfo?.phone || 'Не указан'}</span>
             </div>
             <div className="profile-info-item">
               <span className="profile-info-label">ID аккаунта</span>

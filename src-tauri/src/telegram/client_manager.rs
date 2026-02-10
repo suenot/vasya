@@ -1,17 +1,21 @@
 //! Telegram Client Manager
 //!
-//! Manages multiple Telegram client sessions
+//! Manages multiple Telegram client sessions with real-time update streams.
 
 use anyhow::{Context, Result};
-use grammers_client::Client;
+use grammers_client::{Client, UpdatesConfiguration};
 use grammers_mtsender::SenderPool;
-use grammers_session::{Session, storages::SqliteSession};
+use grammers_session::storages::SqliteSession;
+use grammers_session::updates::UpdatesLike;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tauri::AppHandle;
+use tokio::sync::{mpsc, RwLock};
+use tokio::task::JoinHandle;
 
 use super::auth::UserInfo;
+use super::updates;
 
 /// Telegram client wrapper with metadata
 pub struct TelegramClientWrapper {
@@ -20,82 +24,161 @@ pub struct TelegramClientWrapper {
     pub phone: String,
     pub user_info: Option<UserInfo>,
     pub peers: Arc<RwLock<HashMap<i64, grammers_client::types::Peer>>>,
-    // Don't store SenderPool here - it's been destructured for runner
+}
+
+/// Per-account handles for background tasks
+struct AccountTasks {
+    /// Handle for the updates listener
+    updates_handle: Option<JoinHandle<()>>,
+    /// Shutdown signal sender
+    shutdown_tx: Option<updates::ShutdownTx>,
 }
 
 /// Manager for multiple Telegram clients
 pub struct TelegramClientManager {
     clients: Arc<RwLock<HashMap<String, Arc<TelegramClientWrapper>>>>,
+    tasks: Arc<RwLock<HashMap<String, AccountTasks>>>,
+    /// Stored updates receivers, to be consumed when starting updates handler
+    updates_receivers: Arc<RwLock<HashMap<String, mpsc::UnboundedReceiver<UpdatesLike>>>>,
     pub sessions_dir: PathBuf,
     pub api_id: i32,
     pub api_hash: String,
 }
 
 impl TelegramClientManager {
-    /// Create new client manager
     pub fn new(sessions_dir: PathBuf, api_id: i32, api_hash: String) -> Self {
         Self {
             clients: Arc::new(RwLock::new(HashMap::new())),
+            tasks: Arc::new(RwLock::new(HashMap::new())),
+            updates_receivers: Arc::new(RwLock::new(HashMap::new())),
             sessions_dir,
             api_id,
             api_hash,
         }
     }
 
-    /// Create new client for phone number
-    pub async fn create_client(&self, account_id: String, phone: String) -> Result<Arc<TelegramClientWrapper>> {
+    /// Create a new client and SenderPool, store wrapper, return it.
+    /// Does NOT start the updates handler yet (call `start_updates` after auth).
+    pub async fn create_client(
+        &self,
+        account_id: String,
+        phone: String,
+    ) -> Result<Arc<TelegramClientWrapper>> {
         let session_path = self.sessions_dir.join(format!("{}.session", account_id));
 
-        // Create session
         let session = Arc::new(
             SqliteSession::open(session_path.to_str().unwrap())
-                .context("Failed to open/create session file")?
+                .context("Failed to open/create session file")?,
         );
 
-        // Create sender pool
         let pool = SenderPool::new(session, self.api_id);
-
-        // Create client BEFORE destructuring pool
         let client = Client::new(&pool);
 
-        // Destructure the pool to get runner
-        let SenderPool { runner, updates: _, handle: _ } = pool;
+        // Destructure pool — runner drives the network, save updates receiver
+        let SenderPool {
+            runner,
+            updates,
+            handle: _,
+        } = pool;
 
-        // Spawn the pool runner - CRITICAL for client to work!
-        eprintln!("[ClientManager] Spawning SenderPool runner...");
         tokio::spawn(runner.run());
-        eprintln!("[ClientManager] Telegram client created and runner started");
+        tracing::info!(account_id = %account_id, "SenderPool runner started");
+
+        // Store updates receiver for later use by start_updates
+        self.updates_receivers
+            .write()
+            .await
+            .insert(account_id.clone(), updates);
 
         let wrapper = Arc::new(TelegramClientWrapper {
             client,
             account_id: account_id.clone(),
-            phone: phone.clone(),
+            phone,
             user_info: None,
             peers: Arc::new(RwLock::new(HashMap::new())),
         });
 
-        // Store client
-        let mut clients = self.clients.write().await;
-        clients.insert(account_id.clone(), wrapper.clone());
-
+        self.clients.write().await.insert(account_id.clone(), wrapper.clone());
         Ok(wrapper)
     }
 
-    /// Get existing client
-    pub async fn get_client(&self, account_id: &str) -> Option<Arc<TelegramClientWrapper>> {
-        let clients = self.clients.read().await;
-        clients.get(account_id).cloned()
+    /// Start the real-time updates handler for an account.
+    /// Should be called after successful authentication.
+    pub async fn start_updates(&self, account_id: &str, app: AppHandle) -> Result<()> {
+        let wrapper = self
+            .get_client(account_id)
+            .await
+            .context("Client not found")?;
+
+        // Take the updates receiver (can only be consumed once)
+        let updates_rx = self
+            .updates_receivers
+            .write()
+            .await
+            .remove(account_id)
+            .context("Updates receiver not found (already consumed or never created)")?;
+
+        // Create the UpdateStream from client + receiver
+        let update_stream = wrapper.client.stream_updates(
+            updates_rx,
+            UpdatesConfiguration::default(),
+        );
+
+        // Create shutdown channel
+        let (shutdown_tx, shutdown_rx) = updates::shutdown_channel();
+
+        // Spawn updates handler with the UpdateStream
+        let handle = updates::spawn_updates_handler(
+            update_stream,
+            account_id.to_string(),
+            app,
+            shutdown_rx,
+        );
+
+        // Store task handles
+        self.tasks.write().await.insert(
+            account_id.to_string(),
+            AccountTasks {
+                updates_handle: Some(handle),
+                shutdown_tx: Some(shutdown_tx),
+            },
+        );
+
+        tracing::info!(account_id = %account_id, "Updates handler started");
+        Ok(())
     }
 
-    /// Remove client
-    pub async fn remove_client(&self, account_id: &str) -> Result<()> {
-        let mut clients = self.clients.write().await;
+    /// Stop the updates handler for an account
+    async fn stop_updates(&self, account_id: &str) {
+        let mut tasks = self.tasks.write().await;
+        if let Some(account_tasks) = tasks.remove(account_id) {
+            // Send shutdown signal
+            if let Some(tx) = account_tasks.shutdown_tx {
+                let _ = tx.send(());
+            }
+            // Abort the task if still running
+            if let Some(handle) = account_tasks.updates_handle {
+                handle.abort();
+            }
+            tracing::info!(account_id = %account_id, "Updates handler stopped");
+        }
+    }
 
+    pub async fn get_client(&self, account_id: &str) -> Option<Arc<TelegramClientWrapper>> {
+        self.clients.read().await.get(account_id).cloned()
+    }
+
+    pub async fn remove_client(&self, account_id: &str) -> Result<()> {
+        // Stop updates first
+        self.stop_updates(account_id).await;
+
+        // Clean up any unused updates receiver
+        self.updates_receivers.write().await.remove(account_id);
+
+        let mut clients = self.clients.write().await;
         if let Some(wrapper) = clients.remove(account_id) {
-            // Disconnect client
             wrapper.client.disconnect();
 
-            // Remove session file
             let session_path = self.sessions_dir.join(format!("{}.session", account_id));
             if session_path.exists() {
                 std::fs::remove_file(session_path)
@@ -106,29 +189,25 @@ impl TelegramClientManager {
         Ok(())
     }
 
-    /// Save session for client (session is auto-saved with SqliteSession)
     pub async fn save_session(&self, _account_id: &str) -> Result<()> {
-        // SqliteSession automatically saves, so this is a no-op
+        // SqliteSession auto-saves
         Ok(())
     }
 
-    /// List all active clients
     pub async fn list_clients(&self) -> Vec<String> {
-        let clients = self.clients.read().await;
-        clients.keys().cloned().collect()
+        self.clients.read().await.keys().cloned().collect()
     }
 
-    /// Load existing sessions from disk
+    /// Load existing sessions from disk.
+    /// Updates handlers are NOT started here — call `start_updates` per account after setup.
     pub async fn load_existing_sessions(&self) -> Result<Vec<String>> {
-        let mut loaded_accounts = Vec::new();
+        let mut loaded = Vec::new();
 
-        // Check if sessions directory exists
         if !self.sessions_dir.exists() {
-            eprintln!("[ClientManager] Sessions directory does not exist: {:?}", self.sessions_dir);
-            return Ok(loaded_accounts);
+            tracing::warn!(path = ?self.sessions_dir, "Sessions directory does not exist");
+            return Ok(loaded);
         }
 
-        // Iterate through session files
         let entries = std::fs::read_dir(&self.sessions_dir)
             .context("Failed to read sessions directory")?;
 
@@ -136,46 +215,51 @@ impl TelegramClientManager {
             let entry = entry.context("Failed to read directory entry")?;
             let path = entry.path();
 
-            // Check if it's a .session file
-            if path.extension().and_then(|s| s.to_str()) == Some("session") {
-                if let Some(file_name) = path.file_stem().and_then(|s| s.to_str()) {
-                    let account_id = file_name.to_string();
-                    eprintln!("[ClientManager] Found session file for account: {}", account_id);
-
-                    // Load the session
-                    let session = Arc::new(
-                        SqliteSession::open(path.to_str().unwrap())
-                            .context("Failed to open session file")?
-                    );
-
-                    // Create sender pool
-                    let pool = SenderPool::new(session, self.api_id);
-                    let client = Client::new(&pool);
-
-                    // Destructure and spawn runner
-                    let SenderPool { runner, updates: _, handle: _ } = pool;
-                    tokio::spawn(runner.run());
-
-                    // Create wrapper (we don't know phone yet, will be empty)
-                    let wrapper = Arc::new(TelegramClientWrapper {
-                        client,
-                        account_id: account_id.clone(),
-                        phone: String::new(), // Unknown until we query user info
-                        user_info: None,
-                        peers: Arc::new(RwLock::new(HashMap::new())),
-                    });
-
-                    // Store client
-                    let mut clients = self.clients.write().await;
-                    clients.insert(account_id.clone(), wrapper);
-
-                    loaded_accounts.push(account_id);
-                    eprintln!("[ClientManager] Loaded session for account");
-                }
+            if path.extension().and_then(|s| s.to_str()) != Some("session") {
+                continue;
             }
+
+            let Some(account_id) = path.file_stem().and_then(|s| s.to_str()).map(String::from) else {
+                continue;
+            };
+
+            tracing::info!(account_id = %account_id, "Loading session from disk");
+
+            let session = Arc::new(
+                SqliteSession::open(path.to_str().unwrap())
+                    .context("Failed to open session file")?,
+            );
+
+            let pool = SenderPool::new(session, self.api_id);
+            let client = Client::new(&pool);
+
+            let SenderPool {
+                runner,
+                updates,
+                handle: _,
+            } = pool;
+
+            tokio::spawn(runner.run());
+
+            // Store updates receiver for later use
+            self.updates_receivers
+                .write()
+                .await
+                .insert(account_id.clone(), updates);
+
+            let wrapper = Arc::new(TelegramClientWrapper {
+                client,
+                account_id: account_id.clone(),
+                phone: String::new(),
+                user_info: None,
+                peers: Arc::new(RwLock::new(HashMap::new())),
+            });
+
+            self.clients.write().await.insert(account_id.clone(), wrapper);
+            loaded.push(account_id);
         }
 
-        eprintln!("[ClientManager] Loaded {} sessions from disk", loaded_accounts.len());
-        Ok(loaded_accounts)
+        tracing::info!(count = loaded.len(), "Sessions loaded from disk");
+        Ok(loaded)
     }
 }

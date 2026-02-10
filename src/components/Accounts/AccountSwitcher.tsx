@@ -3,7 +3,7 @@ import { useAccountsStore } from '../../store/accountsStore';
 import './AccountSwitcher.css';
 
 export const AccountSwitcher = () => {
-  const { accounts, activeAccountId, setActiveAccount, removeAccount } = useAccountsStore();
+  const { accounts, activeAccountId, setActiveAccount, clearActiveAccount, removeAccount } = useAccountsStore();
   const [isOpen, setIsOpen] = useState(false);
 
   if (accounts.length === 0) {
@@ -25,8 +25,8 @@ export const AccountSwitcher = () => {
   };
 
   const handleAddAccount = () => {
-    // Перезагрузим приложение чтобы показать форму входа
-    window.location.reload();
+    clearActiveAccount();
+    setIsOpen(false);
   };
 
   return (

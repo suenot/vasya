@@ -1,5 +1,6 @@
-import { useState, KeyboardEvent } from 'react';
-import { useTauriCommand } from '../../hooks/useTauriCommand';
+import { useState, useCallback, KeyboardEvent } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { useMessagesStore } from '../../store/messagesStore';
 import { Message } from '../../types/telegram';
 import './MessageInput.css';
 
@@ -12,49 +13,43 @@ interface MessageInputProps {
 export const MessageInput = ({ accountId, chatId, onMessageSent }: MessageInputProps) => {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const { addOptimisticMessage, confirmOptimisticMessage, failOptimisticMessage } = useMessagesStore();
 
-  const sendMessage = useTauriCommand<Message, {
-    accountId: string;
-    chatId: number;
-    text: string;
-  }>('send_message');
-
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     const trimmedText = text.trim();
     if (!trimmedText || sending) return;
 
-    try {
-      setSending(true);
-      console.log('[MessageInput] Sending message:', trimmedText);
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
-      const sentMessage = await sendMessage({
+    // Optimistic: show message immediately
+    addOptimisticMessage(chatId, tempId, trimmedText);
+    setText('');
+    setSending(true);
+
+    try {
+      const sentMessage = await invoke<Message>('send_message', {
         accountId,
         chatId,
         text: trimmedText,
       });
 
-      console.log('[MessageInput] ✓ Message sent successfully:', sentMessage);
-      setText(''); // Очищаем поле после отправки
-
-      // Уведомляем родительский компонент о новом сообщении
-      if (onMessageSent) {
-        onMessageSent(sentMessage);
-      }
+      // Replace optimistic message with real one
+      confirmOptimisticMessage(chatId, tempId, sentMessage);
+      onMessageSent?.(sentMessage);
     } catch (error) {
-      console.error('[MessageInput] ✗ Failed to send message:', error);
-      // TODO: Показать уведомление об ошибке
+      console.error('[MessageInput] Failed to send:', error);
+      failOptimisticMessage(chatId, tempId);
     } finally {
       setSending(false);
     }
-  };
+  }, [text, sending, accountId, chatId, addOptimisticMessage, confirmOptimisticMessage, failOptimisticMessage, onMessageSent]);
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Отправка по Enter (без Shift)
+  const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
-  };
+  }, [handleSend]);
 
   return (
     <div className="message-input-container">

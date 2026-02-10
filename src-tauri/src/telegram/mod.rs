@@ -2,6 +2,6 @@
 
 pub mod auth;
 pub mod client_manager;
+pub mod updates;
 
-pub use auth::{AuthToken, UserInfo};
 pub use client_manager::TelegramClientManager;
