@@ -12,7 +12,12 @@ import { Chat } from '../../types/telegram';
 import './MainLayout.css';
 
 export const MainLayout = () => {
-  const activeAccount = useAccountsStore((s) => s.getActiveAccount());
+  const activeAccountId = useAccountsStore((s) => s.activeAccountId);
+  const accounts = useAccountsStore((s) => s.accounts);
+  const activeAccount = useMemo(
+    () => accounts.find((a) => a.id === activeAccountId) ?? null,
+    [accounts, activeAccountId]
+  );
   const getCachedChats = useChatsStore((s) => s.getChats);
   const setCachedChats = useChatsStore((s) => s.setChats);
 
@@ -53,6 +58,12 @@ export const MainLayout = () => {
     setError('');
   }, [activeAccount, setCachedChats, loadedChatsArr]));
 
+  // Clear streaming state on account switch
+  useEffect(() => {
+    chatIdsSet.clear();
+    loadedChatsArr.length = 0;
+  }, [activeAccountId, chatIdsSet, loadedChatsArr]);
+
   // Load cached chats + start background sync
   useEffect(() => {
     if (!activeAccount) {
@@ -82,7 +93,7 @@ export const MainLayout = () => {
     };
 
     loadAndSync();
-  }, [activeAccount?.id]);
+  }, [activeAccountId]);
 
   // Filtered chats — memoized with debounced search
   const filteredChats = useMemo(() => {

@@ -18,10 +18,19 @@ pub async fn update_api_credentials(
     let state_guard = state.read().await;
 
     if let Some(client_manager) = &state_guard.client_manager {
-        // Recreate client manager with new credentials
+        // Clone what we need before dropping the read lock
+        let old_manager = Arc::clone(client_manager);
         let sessions_dir = client_manager.sessions_dir.clone();
 
         drop(state_guard); // Release read lock
+
+        // Clean up old clients to stop orphaned runner tasks and update handlers
+        let old_clients = old_manager.list_clients().await;
+        for account_id in &old_clients {
+            if let Err(e) = old_manager.remove_client(account_id).await {
+                tracing::warn!(account_id = %account_id, error = %e, "Failed to cleanup old client");
+            }
+        }
 
         let new_manager = crate::telegram::TelegramClientManager::new(
             sessions_dir,

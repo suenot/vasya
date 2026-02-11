@@ -9,6 +9,7 @@ import { useConnectionStore } from './store/connectionStore';
 import { useSystemTheme } from './hooks/useSystemTheme';
 import { useTauriEvent } from './hooks/useTauriEvent';
 import { useTauriCommand } from './hooks/useTauriCommand';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import "./App.css";
 
 interface ConnectionStatusEvent {
@@ -76,7 +77,7 @@ function App() {
   if (activeAccount) {
     return (
       <div className="app">
-        <MainLayout />
+        <ErrorBoundary><MainLayout /></ErrorBoundary>
       </div>
     );
   }
@@ -84,7 +85,7 @@ function App() {
   // Иначе - показываем форму входа
   return (
     <div className="app">
-      <LoginForm />
+      <ErrorBoundary><LoginForm /></ErrorBoundary>
     </div>
   );
 }

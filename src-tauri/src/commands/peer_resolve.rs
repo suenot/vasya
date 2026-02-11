@@ -19,9 +19,11 @@ pub async fn resolve_peer(
         }
     }
 
-    // Fallback: iterate dialogs, caching every peer along the way
+    // Fallback: iterate dialogs, collecting peers for batch insert
     tracing::warn!(chat_id = chat_id, "Peer not in cache, iterating dialogs");
     let mut dialogs = wrapper.client.iter_dialogs();
+    let mut found: Option<grammers_client::types::Peer> = None;
+    let mut new_peers = Vec::new();
 
     while let Some(dialog) = dialogs
         .next()
@@ -30,13 +32,21 @@ pub async fn resolve_peer(
     {
         let peer = &dialog.peer;
         let id = PeerRef::from(peer).id.bot_api_dialog_id();
-
-        wrapper.peers.write().await.insert(id, peer.clone());
+        new_peers.push((id, peer.clone()));
 
         if id == chat_id {
-            return Ok(peer.clone());
+            found = Some(peer.clone());
+            break;
         }
     }
 
-    Err(format!("Chat {} not found", chat_id))
+    // Batch insert all discovered peers
+    if !new_peers.is_empty() {
+        let mut peers = wrapper.peers.write().await;
+        for (id, peer) in new_peers {
+            peers.insert(id, peer);
+        }
+    }
+
+    found.ok_or_else(|| format!("Chat {} not found", chat_id))
 }

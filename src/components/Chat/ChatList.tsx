@@ -52,8 +52,8 @@ export const ChatList = ({
               chat={chat}
               isSelected={selectedChatId === chat.id}
               isFavorite={favorites.has(chat.id)}
-              onClick={() => onChatClick(chat.id)}
-              onContextMenu={(e) => onContextMenu(e, chat.id)}
+              onChatClick={onChatClick}
+              onContextMenu={onContextMenu}
             />
           ))
         ) : searchQuery.trim() ? (

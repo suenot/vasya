@@ -1,3 +1,4 @@
+import { memo, useCallback } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { Chat } from '../../types/telegram';
 
@@ -5,17 +6,25 @@ interface ChatListItemProps {
   chat: Chat;
   isSelected: boolean;
   isFavorite: boolean;
-  onClick: () => void;
-  onContextMenu: (e: React.MouseEvent) => void;
+  onChatClick: (chatId: number) => void;
+  onContextMenu: (e: React.MouseEvent, chatId: number) => void;
 }
 
-export const ChatListItem = ({
+export const ChatListItem = memo(({
   chat,
   isSelected,
   isFavorite,
-  onClick,
+  onChatClick,
   onContextMenu,
 }: ChatListItemProps) => {
+  const handleClick = useCallback(() => {
+    onChatClick(chat.id);
+  }, [onChatClick, chat.id]);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    onContextMenu(e, chat.id);
+  }, [onContextMenu, chat.id]);
+
   const classNames = [
     'chat-item',
     isSelected ? 'selected' : '',
@@ -27,8 +36,8 @@ export const ChatListItem = ({
   return (
     <div
       className={classNames}
-      onClick={onClick}
-      onContextMenu={onContextMenu}
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
     >
       <div className="chat-avatar">
         {chat.avatarPath ? (
@@ -63,4 +72,4 @@ export const ChatListItem = ({
       </div>
     </div>
   );
-};
+});

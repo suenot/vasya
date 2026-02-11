@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 use std::path::PathBuf;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::RwLock;
 use serde::{Deserialize, Serialize};
 use grammers_client::types::Peer;
@@ -29,12 +29,15 @@ pub async fn get_cached_chats(
     state: State<'_, Arc<RwLock<AppState>>>,
 ) -> Result<Vec<Chat>, String> {
     let state_guard = state.read().await;
-    let db = state_guard
-        .db
-        .as_ref()
-        .ok_or("Database not initialized")?;
+    let db = Arc::clone(
+        state_guard
+            .db
+            .as_ref()
+            .ok_or("Database not initialized")?,
+    );
+    drop(state_guard);
 
-    let records = db.get_chats(&account_id)
+    let records = db.get_chats_async(account_id.clone()).await
         .map_err(|e| format!("Failed to get chats from database: {}", e))?;
 
     let chats = records
@@ -60,24 +63,32 @@ pub async fn start_loading_chats(
     app: AppHandle,
     state: State<'_, Arc<RwLock<AppState>>>,
 ) -> Result<(), String> {
-    eprintln!("===== START_LOADING_CHATS CALLED =====");
-    eprintln!("Account ID: {}", account_id);
+    tracing::debug!("start_loading_chats called");
+    tracing::debug!(account_id = %account_id, "Loading chats");
 
     let state_guard = state.read().await;
-    let client_manager = state_guard
-        .client_manager
-        .as_ref()
-        .ok_or("Client manager not initialized")?;
+    let client_manager = Arc::clone(
+        state_guard
+            .client_manager
+            .as_ref()
+            .ok_or("Client manager not initialized")?,
+    );
+    let db = state_guard.db.as_ref().map(Arc::clone);
 
     let wrapper = client_manager
         .get_client(&account_id)
         .await
         .ok_or("Client not found for this account")?;
 
-    eprintln!("Fetching dialogs from Telegram with progressive updates...");
+    // Drop the state guard before the async loop to avoid holding the lock across awaits
+    drop(state_guard);
 
-    // Create avatars directory
-    let avatars_dir = PathBuf::from("media").join("avatars");
+    tracing::debug!("Fetching dialogs with progressive updates");
+
+    // Create avatars directory using app data dir for reliable absolute paths
+    let app_data_dir = app.path().app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+    let avatars_dir = app_data_dir.join("media").join("avatars");
     tokio::fs::create_dir_all(&avatars_dir).await
         .map_err(|e| format!("Failed to create avatars directory: {}", e))?;
 
@@ -136,20 +147,20 @@ pub async fn start_loading_chats(
         };
 
         // Save to database
-        if let Some(db) = &state_guard.db {
-            if let Err(e) = db.save_chat(
-                &account_id,
+        if let Some(ref db) = db {
+            if let Err(e) = db.save_chat_async(
+                account_id.clone(),
                 chat_id,
-                chat_type,
-                &title,
-                username.as_deref(),
-                avatar_path.as_deref(),
-                last_message_text.as_deref(),
+                chat_type.to_string(),
+                title.clone(),
+                username.clone(),
+                avatar_path.clone(),
+                last_message_text.clone(),
                 0,    // unread_count
-            ) {
-                eprintln!("⚠ Failed to save chat {} to database: {}", chat_id, e);
+            ).await {
+                tracing::warn!(chat_id = chat_id, error = %e, "Failed to save chat to database");
             } else {
-                eprintln!("✓ Saved chat {} to database", chat_id);
+                tracing::debug!(chat_id = chat_id, "Saved chat to database");
             }
         }
 
@@ -170,6 +181,7 @@ pub async fn start_loading_chats(
 #[tauri::command]
 pub async fn get_chats(
     account_id: String,
+    app: AppHandle,
     state: State<'_, Arc<RwLock<AppState>>>,
 ) -> Result<Vec<Chat>, String> {
     let state_guard = state.read().await;
@@ -183,7 +195,12 @@ pub async fn get_chats(
         .await
         .ok_or("Client not found for this account")?;
 
-    let avatars_dir = PathBuf::from("media").join("avatars");
+    let app_data_dir = app.path().app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+    let avatars_dir = app_data_dir.join("media").join("avatars");
+    tokio::fs::create_dir_all(&avatars_dir).await
+        .map_err(|e| format!("Failed to create avatars directory: {}", e))?;
+
     let mut dialogs = wrapper.client.iter_dialogs();
     let mut chats = Vec::new();
 
@@ -219,7 +236,8 @@ pub async fn get_chats(
     Ok(chats)
 }
 
-/// Helper function to download avatar for a peer
+/// Helper function to download avatar for a peer.
+/// The `avatars_dir` must be an absolute path (derived from app_data_dir).
 async fn download_avatar_for_peer(
     client: &grammers_client::Client,
     peer: &Peer,
@@ -228,19 +246,10 @@ async fn download_avatar_for_peer(
 ) -> Option<String> {
     let file_path = avatars_dir.join(format!("chat_{}.jpg", chat_id.abs()));
 
-    // Get absolute path for Tauri
-    let absolute_path = match std::env::current_dir() {
-        Ok(cwd) => cwd.join(&file_path),
-        Err(e) => {
-            eprintln!("Failed to get current directory: {}", e);
-            return None;
-        }
-    };
-
-    // Check if avatar already exists
-    if absolute_path.exists() {
-        eprintln!("Avatar already exists for chat {}: {:?}", chat_id, absolute_path);
-        return Some(absolute_path.to_string_lossy().to_string());
+    // Check if avatar already exists (avatars_dir is already absolute)
+    if file_path.exists() {
+        tracing::debug!(chat_id = chat_id, "Avatar already cached");
+        return Some(file_path.to_string_lossy().to_string());
     }
 
     // Try to get and download the first profile photo
@@ -251,21 +260,21 @@ async fn download_avatar_for_peer(
             // Download the photo
             match client.download_media(&photo, &file_path).await {
                 Ok(()) => {
-                    eprintln!("✓ Avatar downloaded for chat {}: {:?}", chat_id, absolute_path);
-                    Some(absolute_path.to_string_lossy().to_string())
+                    tracing::debug!(chat_id = chat_id, "Avatar downloaded");
+                    Some(file_path.to_string_lossy().to_string())
                 }
                 Err(e) => {
-                    eprintln!("Failed to download avatar for chat {}: {}", chat_id, e);
+                    tracing::warn!(chat_id = chat_id, error = %e, "Failed to download avatar");
                     None
                 }
             }
         }
         Ok(None) => {
-            eprintln!("No profile photo available for chat {}", chat_id);
+            tracing::debug!(chat_id = chat_id, "No profile photo available");
             None
         }
         Err(e) => {
-            eprintln!("Error getting profile photos for chat {}: {}", chat_id, e);
+            tracing::warn!(chat_id = chat_id, error = %e, "Error getting profile photos");
             None
         }
     }

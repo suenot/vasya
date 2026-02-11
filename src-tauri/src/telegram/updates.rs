@@ -10,6 +10,8 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::broadcast;
 
+use crate::commands::media_types::classify_media_type;
+
 /// Events emitted to the frontend
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -55,27 +57,7 @@ fn message_to_event(msg: &GrammersMessage, account_id: &str) -> NewMessageEvent 
     let chat_id = msg.peer_id().bot_api_dialog_id();
 
     let has_media = msg.media().is_some();
-    let media_type = msg.media().map(|m| {
-        match m {
-            grammers_client::types::Media::Photo(_) => "photo".to_string(),
-            grammers_client::types::Media::Document(doc) => {
-                doc.mime_type()
-                    .map(|mime| {
-                        if mime.starts_with("video/") {
-                            "video"
-                        } else if mime.starts_with("audio/") {
-                            "audio"
-                        } else {
-                            "document"
-                        }
-                    })
-                    .unwrap_or("document")
-                    .to_string()
-            }
-            grammers_client::types::Media::WebPage(_) => "webpage".to_string(),
-            _ => "other".to_string(),
-        }
-    });
+    let media_type = msg.media().map(|m| classify_media_type(&m).to_string());
 
     NewMessageEvent {
         id: msg.id(),

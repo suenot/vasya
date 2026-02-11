@@ -39,7 +39,11 @@ const formatTime = (timestamp: number) =>
 export const MessageList = ({ accountId, chatId, chatTitle }: MessageListProps) => {
   const messages = useMessagesStore((s) => s.messagesByChat[chatId] || []);
   const hasMore = useMessagesStore((s) => s.hasMoreByChat[chatId] ?? true);
-  const { setMessages, prependMessages, addMessage, removeMessage, setHasMore } = useMessagesStore();
+  const setMessages = useMessagesStore((s) => s.setMessages);
+  const prependMessages = useMessagesStore((s) => s.prependMessages);
+  const addMessage = useMessagesStore((s) => s.addMessage);
+  const removeMessage = useMessagesStore((s) => s.removeMessage);
+  const setHasMore = useMessagesStore((s) => s.setHasMore);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
@@ -71,11 +75,17 @@ export const MessageList = ({ accountId, chatId, chatTitle }: MessageListProps) 
     load();
   }, [chatId, accountId, setMessages, setHasMore]);
 
-  // Scroll to bottom after initial load
+  // Scroll to bottom only on initial load (not on prepend)
+  const prevMessagesLength = useRef(0);
   useEffect(() => {
-    if (messages.length > 0 && initialLoadDone.current) {
+    if (!initialLoadDone.current) return;
+
+    // Only auto-scroll when it's the initial load for this chat
+    // (length went from 0 to N) — NOT on prepend (length grows at start)
+    if (prevMessagesLength.current === 0 && messages.length > 0) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
+    prevMessagesLength.current = messages.length;
   }, [messages.length]);
 
   // Real-time: new message

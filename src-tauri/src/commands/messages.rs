@@ -9,6 +9,7 @@ use grammers_session::defs::PeerRef;
 
 use crate::AppState;
 use grammers_client::types::Media;
+use super::media_types::classify_media_type;
 use super::peer_resolve::resolve_peer;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -35,52 +36,22 @@ pub struct Message {
 /// Extract media information from a message
 fn extract_media_info(msg: &GrammersMessage) -> Option<Vec<MediaInfo>> {
     msg.media().map(|media| {
-        let info = match media {
-            Media::WebPage(_) => MediaInfo {
-                media_type: "webpage".to_string(),
-                file_path: None,
-                file_name: None,
-                file_size: None,
-                mime_type: None,
-            },
-            Media::Photo(_) => MediaInfo {
-                media_type: "photo".to_string(),
-                file_path: None,
-                file_name: None,
-                file_size: None,
-                mime_type: Some("image/jpeg".to_string()),
-            },
-            Media::Document(doc) => {
-                let media_type = doc
-                    .mime_type()
-                    .map(|mime| {
-                        if mime.starts_with("video/") {
-                            "video"
-                        } else if mime.starts_with("audio/") {
-                            if mime == "audio/ogg" { "voice" } else { "audio" }
-                        } else {
-                            "document"
-                        }
-                    })
-                    .unwrap_or("document");
-
-                MediaInfo {
-                    media_type: media_type.to_string(),
-                    file_path: None,
-                    file_name: None,
-                    file_size: Some(doc.size() as u64),
-                    mime_type: doc.mime_type().map(|s| s.to_string()),
-                }
-            }
-            _ => MediaInfo {
-                media_type: "other".to_string(),
-                file_path: None,
-                file_name: None,
-                file_size: None,
-                mime_type: None,
-            },
+        let media_type = classify_media_type(&media).to_string();
+        let (file_size, mime_type) = match &media {
+            Media::Document(doc) => (
+                Some(doc.size() as u64),
+                doc.mime_type().map(|s| s.to_string()),
+            ),
+            Media::Photo(_) => (None, Some("image/jpeg".to_string())),
+            _ => (None, None),
         };
-        vec![info]
+        vec![MediaInfo {
+            media_type,
+            file_path: None,
+            file_name: None,
+            file_size,
+            mime_type,
+        }]
     })
 }
 

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { MediaInfo } from '../types/telegram';
 
 interface MessageBase {
   id: number;
@@ -7,7 +8,7 @@ interface MessageBase {
   text?: string;
   date: number;
   is_outgoing: boolean;
-  media?: any[];
+  media?: MediaInfo[];
   // Optimistic update fields
   _optimistic?: boolean;
   _tempId?: string;
