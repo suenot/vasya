@@ -108,7 +108,10 @@ export const LoginForm = () => {
   return (
     <div className="login-container">
       <div className="login-card">
-        <h1 className="login-title">Telegram</h1>
+        <div className="login-logo-container">
+          <img src="/vasyapp.svg" alt="Vasyapp Logo" className="login-logo" />
+        </div>
+        <h1 className="login-title">Vasyapp</h1>
 
         {step === 'phone' && (
           <form onSubmit={handlePhoneSubmit} className="login-form">

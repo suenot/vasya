@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { AccountSwitcher } from '../Accounts/AccountSwitcher';
 import { AccountSettings } from '../Settings/AccountSettings';
 import { MessageList } from '../Messages/MessageList';
 import { ChatList, ChatHeader, ChatContextMenu } from '../Chat';
@@ -153,8 +152,8 @@ export const MainLayout = () => {
         <div className="sidebar-header">
           <div className="sidebar-header-top">
             <div className="header-left">
-              <AccountSwitcher />
-              <h2 className="sidebar-title">Chats</h2>
+              <img src="/vasyapp.svg" alt="" className="sidebar-logo" />
+              <h2 className="sidebar-title">Vasyapp</h2>
             </div>
             <div className="sidebar-actions">
               <button className="icon-button" title="Settings" onClick={() => setShowSettings(true)}>

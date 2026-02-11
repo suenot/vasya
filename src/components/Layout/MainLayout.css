@@ -39,12 +39,19 @@
   gap: 12px;
 }
 
+.sidebar-logo {
+  width: 38px;
+  height: 38px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+}
+
 .sidebar-title {
   margin: 0;
-  font-size: 20px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: -0.5px;
+  letter-spacing: -0.8px;
 }
 
 .icon-button {

@@ -23,7 +23,7 @@ function App() {
   const { themeSetting, setEffectiveTheme } = useThemeStore();
   const { setConnected, setDisconnected, setReconnecting } = useConnectionStore();
   const systemTheme = useSystemTheme();
-  const updateApiCredentials = useTauriCommand<void, { api_id: number; api_hash: string }>('update_api_credentials');
+  const updateApiCredentials = useTauriCommand<void, { apiId: number; apiHash: string }>('update_api_credentials');
 
   // Track connection status from Rust backend
   useTauriEvent<ConnectionStatusEvent>('connection-status', useCallback((evt) => {
@@ -51,8 +51,8 @@ function App() {
     try {
       // Отправить в backend
       await updateApiCredentials({
-        api_id: parseInt(apiId),
-        api_hash: apiHash,
+        apiId: parseInt(apiId),
+        apiHash: apiHash,
       });
 
       // Сохранить в localStorage
