@@ -33,46 +33,48 @@ impl Default for AppState {
     }
 }
 
-/// Load .env file from parent or current directory
+/// Load .env file — checks multiple locations:
+/// 1. Next to the executable (for bundled .app)
+/// 2. Parent of executable dir (for cargo run from src-tauri/)
+/// 3. Current working directory
+/// 4. Parent of cwd (for tauri dev)
 fn load_env() {
-    let parent_dir = std::path::Path::new("../.env");
-    let current_dir = std::path::Path::new(".env");
-
-    if parent_dir.exists() {
-        if let Err(e) = dotenvy::from_path(parent_dir) {
-            tracing::warn!(error = %e, "Could not load .env from parent dir");
+    let candidates: Vec<std::path::PathBuf> = {
+        let mut v = Vec::new();
+        // Next to the binary (works inside .app bundle)
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(dir) = exe.parent() {
+                v.push(dir.join(".env"));
+                // macOS .app: Contents/MacOS/../../../.env (next to .app)
+                if let Some(grandparent) = dir.parent().and_then(|p| p.parent()).and_then(|p| p.parent()) {
+                    v.push(grandparent.join(".env"));
+                }
+            }
         }
-    } else if current_dir.exists() {
-        if let Err(e) = dotenvy::dotenv() {
-            tracing::warn!(error = %e, "Could not load .env from current dir");
+        // cwd-relative (for cargo run / tauri dev)
+        v.push(std::path::PathBuf::from(".env"));
+        v.push(std::path::PathBuf::from("../.env"));
+        v
+    };
+
+    for path in &candidates {
+        if path.exists() {
+            if let Err(e) = dotenvy::from_path(path) {
+                eprintln!("Warning: could not load .env from {:?}: {}", path, e);
+            } else {
+                eprintln!("Loaded .env from {:?}", path);
+                return;
+            }
         }
     }
+    eprintln!("No .env file found in any of: {:?}", candidates);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     load_env();
 
-    std::fs::create_dir_all("logs").ok();
-
-    let file_appender = tracing_appender::rolling::daily("logs", "telegram-client.log");
-    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
-
-    tracing_subscriber::fmt()
-        .with_writer(non_blocking)
-        .with_ansi(false)
-        .with_target(true)
-        .with_thread_ids(true)
-        .with_line_number(true)
-        .with_file(true)
-        .with_max_level(tracing::Level::DEBUG)
-        .init();
-
-    tracing::info!("=== Telegram Client Started ===");
-    tracing::info!("Version: {}", env!("CARGO_PKG_VERSION"));
-
-    let mut initial_state = AppState::default();
-    initial_state._logger_guard = Some(guard);
+    let initial_state = AppState::default();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -99,6 +101,34 @@ pub fn run() {
                 .expect("Failed to get app data dir");
 
             std::fs::create_dir_all(&app_dir).expect("Failed to create app data directory");
+
+            // Initialize logging into app_data_dir/logs/
+            let logs_dir = app_dir.join("logs");
+            std::fs::create_dir_all(&logs_dir).expect("Failed to create logs directory");
+
+            let file_appender = tracing_appender::rolling::daily(&logs_dir, "telegram-client.log");
+            let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+
+            tracing_subscriber::fmt()
+                .with_writer(non_blocking)
+                .with_ansi(false)
+                .with_target(true)
+                .with_thread_ids(true)
+                .with_line_number(true)
+                .with_file(true)
+                .with_max_level(tracing::Level::DEBUG)
+                .init();
+
+            tracing::info!("=== Telegram Client Started ===");
+            tracing::info!("Version: {}", env!("CARGO_PKG_VERSION"));
+            tracing::info!("App data dir: {:?}", app_dir);
+
+            // Store logger guard in state to keep it alive
+            {
+                let state = app.state::<Arc<RwLock<AppState>>>();
+                let mut state = tauri::async_runtime::block_on(state.write());
+                state._logger_guard = Some(guard);
+            }
 
             let db_path = app_dir.join("telegram.db");
             let db = database::Database::open(&db_path).expect("Failed to open database");
