@@ -293,11 +293,14 @@ pub async fn send_media(
     // Clean up temp file
     let _ = tokio::fs::remove_file(&tmp_path).await;
 
-    // Create the message with media — set mime_type and name for correct type detection
-    let input_msg = grammers_client::InputMessage::new()
+    // For images: let grammers auto-detect from extension → sends as inputMediaUploadedPhoto
+    // For other files: set mime_type explicitly → sends as inputMediaUploadedDocument
+    let mut input_msg = grammers_client::InputMessage::new()
         .text(caption.unwrap_or_default())
-        .file(uploaded_file)
-        .mime_type(&mime_type);
+        .file(uploaded_file);
+    if !mime_type.starts_with("image/") {
+        input_msg = input_msg.mime_type(&mime_type);
+    }
 
     let sent_message = wrapper
         .client

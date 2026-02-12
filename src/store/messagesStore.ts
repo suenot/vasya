@@ -115,10 +115,12 @@ export const useMessagesStore = create<MessagesState>((set) => ({
     set((state) => {
       const messages = state.messagesByChat[chatId];
       if (!messages) return state;
+      // Remove any duplicate with the same real ID (from update stream arriving early)
+      const deduped = messages.filter((m) => m.id !== realMessage.id || m._tempId === tempId);
       return {
         messagesByChat: {
           ...state.messagesByChat,
-          [chatId]: messages.map((m) =>
+          [chatId]: deduped.map((m) =>
             m._tempId === tempId ? { ...realMessage, _status: 'sent' as const } : m
           ),
         },
