@@ -91,6 +91,7 @@ pub fn run() {
             commands::start_loading_chats,
             commands::get_messages,
             commands::send_message,
+            commands::send_media,
             commands::download_media,
             commands::download_chat_photo,
             commands::search_messages,

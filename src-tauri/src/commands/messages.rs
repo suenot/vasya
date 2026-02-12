@@ -241,3 +241,76 @@ pub async fn send_message(
         media: extract_media_info(&sent_message),
     })
 }
+/// Send media to a chat
+#[tauri::command]
+pub async fn send_media(
+    account_id: String,
+    chat_id: i64,
+    media_bytes: Vec<u8>,
+    file_name: String,
+    mime_type: String,
+    caption: Option<String>,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<Message, String> {
+    tracing::info!(
+        account_id = %account_id,
+        chat_id = chat_id,
+        file_name = %file_name,
+        "Sending media"
+    );
+
+    let wrapper = {
+        let state_guard = state.read().await;
+        let client_manager = state_guard
+            .client_manager
+            .as_ref()
+            .ok_or("Client manager not initialized")?;
+        client_manager
+            .get_client(&account_id)
+            .await
+            .ok_or("Client not found for this account")?
+    };
+
+    let chat = resolve_peer(&wrapper, chat_id).await?;
+
+    // Create a temporary file to upload
+    let tmp_path = std::env::temp_dir().join(format!("upload_{}", uuid::Uuid::new_v4()));
+    tokio::fs::write(&tmp_path, media_bytes)
+        .await
+        .map_err(|e| format!("Failed to write temp file: {}", e))?;
+
+    // Upload the file
+    let uploaded_file = wrapper
+        .client
+        .upload_file(&tmp_path)
+        .await
+        .map_err(|e| format!("Failed to upload file: {}", e))?;
+
+    // Clean up temp file
+    let _ = tokio::fs::remove_file(&tmp_path).await;
+
+    // Create the message with media
+    let input_msg = grammers_client::InputMessage::new()
+        .text(caption.unwrap_or_default())
+        .file(uploaded_file);
+
+    let sent_message = wrapper
+        .client
+        .send_message(&chat, input_msg)
+        .await
+        .map_err(|e| format!("Failed to send media: {}", e))?;
+
+    tracing::info!(msg_id = sent_message.id(), "Media sent");
+
+    Ok(Message {
+        id: sent_message.id(),
+        chat_id,
+        from_user_id: sent_message
+            .sender()
+            .map(|s| PeerRef::from(s).id.bot_api_dialog_id()),
+        text: if sent_message.text().is_empty() { None } else { Some(sent_message.text().to_string()) },
+        date: sent_message.date().timestamp(),
+        is_outgoing: true,
+        media: extract_media_info(&sent_message),
+    })
+}
