@@ -273,8 +273,12 @@ pub async fn send_media(
 
     let chat = resolve_peer(&wrapper, chat_id).await?;
 
-    // Create a temporary file to upload
-    let tmp_path = std::env::temp_dir().join(format!("upload_{}", uuid::Uuid::new_v4()));
+    // Preserve file extension so grammers can detect media type
+    let ext = std::path::Path::new(&file_name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("bin");
+    let tmp_path = std::env::temp_dir().join(format!("upload_{}.{}", uuid::Uuid::new_v4(), ext));
     tokio::fs::write(&tmp_path, media_bytes)
         .await
         .map_err(|e| format!("Failed to write temp file: {}", e))?;
@@ -289,10 +293,11 @@ pub async fn send_media(
     // Clean up temp file
     let _ = tokio::fs::remove_file(&tmp_path).await;
 
-    // Create the message with media
+    // Create the message with media — set mime_type and name for correct type detection
     let input_msg = grammers_client::InputMessage::new()
         .text(caption.unwrap_or_default())
-        .file(uploaded_file);
+        .file(uploaded_file)
+        .mime_type(&mime_type);
 
     let sent_message = wrapper
         .client
