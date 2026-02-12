@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { LoginForm } from './components/Auth/LoginForm';
 import { MainLayout } from './components/Layout/MainLayout';
 import { ApiSettings } from './components/Settings/ApiSettings';
@@ -13,15 +13,21 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import "./App.css";
 
 interface ConnectionStatusEvent {
-  account_id: string;
+  accountId: string;
   status: 'connected' | 'disconnected' | 'reconnecting';
 }
 
 function App() {
-  const { isConfigured, setApiCredentials } = useSettingsStore();
-  const { getActiveAccount } = useAccountsStore();
-  const { themeSetting, setEffectiveTheme } = useThemeStore();
-  const { setConnected, setDisconnected, setReconnecting } = useConnectionStore();
+  // Individual selectors — only re-render when the selected value changes
+  const isConfigured = useSettingsStore((s) => s.isConfigured);
+  const setApiCredentials = useSettingsStore((s) => s.setApiCredentials);
+  const accounts = useAccountsStore((s) => s.accounts);
+  const activeAccountId = useAccountsStore((s) => s.activeAccountId);
+  const themeSetting = useThemeStore((s) => s.themeSetting);
+  const setEffectiveTheme = useThemeStore((s) => s.setEffectiveTheme);
+  const setConnected = useConnectionStore((s) => s.setConnected);
+  const setDisconnected = useConnectionStore((s) => s.setDisconnected);
+  const setReconnecting = useConnectionStore((s) => s.setReconnecting);
   const systemTheme = useSystemTheme();
   const updateApiCredentials = useTauriCommand<void, { apiId: number; apiHash: string }>('update_api_credentials');
 
@@ -63,6 +69,28 @@ function App() {
     }
   };
 
+  const activeAccount = useMemo(
+    () => accounts.find((a) => a.id === activeAccountId) ?? null,
+    [accounts, activeAccountId]
+  );
+
+  // Remember previous active account ID so we can restore it on cancel
+  const prevAccountIdRef = useRef<string | null>(activeAccountId);
+  useEffect(() => {
+    if (activeAccountId) {
+      prevAccountIdRef.current = activeAccountId;
+    }
+  }, [activeAccountId]);
+
+  const setActiveAccount = useAccountsStore((s) => s.setActiveAccount);
+
+  const handleLoginCancel = useCallback(() => {
+    const fallbackId = prevAccountIdRef.current || accounts[0]?.id;
+    if (fallbackId) {
+      setActiveAccount(fallbackId);
+    }
+  }, [accounts, setActiveAccount]);
+
   // Если API не настроен - показываем экран настройки
   if (!isConfigured) {
     return (
@@ -73,7 +101,6 @@ function App() {
   }
 
   // Если есть активный аккаунт - показываем главный интерфейс
-  const activeAccount = getActiveAccount();
   if (activeAccount) {
     return (
       <div className="app">
@@ -85,7 +112,7 @@ function App() {
   // Иначе - показываем форму входа
   return (
     <div className="app">
-      <ErrorBoundary><LoginForm /></ErrorBoundary>
+      <ErrorBoundary><LoginForm onCancel={accounts.length > 0 ? handleLoginCancel : undefined} /></ErrorBoundary>
     </div>
   );
 }

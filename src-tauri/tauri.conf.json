@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "telegram-client",
+  "productName": "Vasyapp",
   "version": "0.1.0",
-  "identifier": "com.suenot.telegram-client",
+  "identifier": "com.suenot.vasyapp",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "telegram-client",
+        "title": "Vasyapp",
         "width": 1200,
         "height": 800,
         "devtools": true

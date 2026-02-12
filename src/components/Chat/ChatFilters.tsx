@@ -4,9 +4,9 @@ interface ChatFiltersProps {
 }
 
 const FILTERS: { key: ChatFiltersProps['activeFilter']; label: string }[] = [
-  { key: 'contacts', label: 'Kontakty' },
-  { key: 'chats', label: 'Chaty' },
-  { key: 'favorites', label: 'Izbrannoe' },
+  { key: 'contacts', label: 'Contacts' },
+  { key: 'chats', label: 'Chats' },
+  { key: 'favorites', label: 'Favorites' },
 ];
 
 export const ChatFilters = ({ activeFilter, onFilterChange }: ChatFiltersProps) => {

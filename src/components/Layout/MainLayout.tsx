@@ -1,6 +1,7 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { AccountSettings } from '../Settings/AccountSettings';
+import { AccountSwitcher } from '../Accounts/AccountSwitcher';
 import { MessageList } from '../Messages/MessageList';
 import { ChatList, ChatHeader, ChatContextMenu } from '../Chat';
 import { useAccountsStore } from '../../store/accountsStore';
@@ -40,14 +41,33 @@ export const MainLayout = () => {
   // Mutable refs for streaming chat-loaded events without re-renders
   const [chatIdsSet] = useState(() => new Set<number>());
   const [loadedChatsArr] = useState<Chat[]>(() => []);
+  const flushRef = useRef(0);
 
   useTauriEvent<Chat>('chat-loaded', useCallback((chat: Chat) => {
     if (chatIdsSet.has(chat.id)) return;
     chatIdsSet.add(chat.id);
     loadedChatsArr.push(chat);
-    setChats([...loadedChatsArr]);
-    setLoading(false);
+
+    // Batch: one React state update per animation frame instead of per event
+    if (!flushRef.current) {
+      flushRef.current = requestAnimationFrame(() => {
+        flushRef.current = 0;
+        setChats([...loadedChatsArr]);
+        setLoading(false);
+      });
+    }
   }, [chatIdsSet, loadedChatsArr]));
+
+  // Handle avatar updates from background downloads
+  useTauriEvent<{ chatId: number; avatarPath: string }>('chat-avatar-updated', useCallback((evt) => {
+    const idx = loadedChatsArr.findIndex((c) => c.id === evt.chatId);
+    if (idx !== -1) {
+      loadedChatsArr[idx] = { ...loadedChatsArr[idx], avatarPath: evt.avatarPath };
+    }
+    setChats((prev) => prev.map((c) =>
+      c.id === evt.chatId ? { ...c, avatarPath: evt.avatarPath } : c
+    ));
+  }, [loadedChatsArr]));
 
   useTauriEvent<number>('chats-loading-complete', useCallback((_total: number) => {
     if (activeAccount) {
@@ -57,8 +77,19 @@ export const MainLayout = () => {
     setError('');
   }, [activeAccount, setCachedChats, loadedChatsArr]));
 
+  // Cancel pending flush on unmount
+  useEffect(() => {
+    return () => {
+      if (flushRef.current) cancelAnimationFrame(flushRef.current);
+    };
+  }, []);
+
   // Clear streaming state on account switch
   useEffect(() => {
+    if (flushRef.current) {
+      cancelAnimationFrame(flushRef.current);
+      flushRef.current = 0;
+    }
     chatIdsSet.clear();
     loadedChatsArr.length = 0;
   }, [activeAccountId, chatIdsSet, loadedChatsArr]);
@@ -86,7 +117,8 @@ export const MainLayout = () => {
       try {
         await invoke('start_loading_chats', { accountId: activeAccount.id });
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Ошибка загрузки чатов');
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(msg || 'Ошибка загрузки чатов');
         setLoading(false);
       }
     };
@@ -151,15 +183,12 @@ export const MainLayout = () => {
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="sidebar-header-top">
-            <div className="header-left">
-              <img src="/vasyapp.svg" alt="" className="sidebar-logo" />
-              <h2 className="sidebar-title">Vasyapp</h2>
-            </div>
+            <AccountSwitcher />
             <div className="sidebar-actions">
               <button className="icon-button" title="Settings" onClick={() => setShowSettings(true)}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  <path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z" />
+                  <circle cx="12" cy="12" r="3" />
                 </svg>
               </button>
             </div>

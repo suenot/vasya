@@ -22,6 +22,13 @@ pub struct Chat {
     pub avatar_path: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ChatAvatarUpdatedEvent {
+    pub chat_id: i64,
+    pub avatar_path: String,
+}
+
 /// Get cached chats from database
 #[tauri::command]
 pub async fn get_cached_chats(
@@ -92,7 +99,8 @@ pub async fn start_loading_chats(
     tokio::fs::create_dir_all(&avatars_dir).await
         .map_err(|e| format!("Failed to create avatars directory: {}", e))?;
 
-    // Get all dialogs (chats) and emit each one immediately
+    // Get all dialogs (chats) and emit each one IMMEDIATELY.
+    // Avatar downloads and DB saves run in background tasks.
     let mut dialogs = wrapper.client.iter_dialogs();
     let mut count = 0;
 
@@ -120,8 +128,13 @@ pub async fn start_loading_chats(
             peers.insert(chat_id, peer.clone());
         }
 
-        // Try to download avatar
-        let avatar_path = download_avatar_for_peer(&wrapper.client, peer, chat_id, &avatars_dir).await;
+        // Quick filesystem check for cached avatar (no network, ~0ms)
+        let avatar_file = avatars_dir.join(format!("chat_{}.jpg", chat_id.abs()));
+        let cached_avatar = if avatar_file.exists() {
+            Some(avatar_file.to_string_lossy().to_string())
+        } else {
+            None
+        };
 
         // Get last message text from dialog
         let last_message_text = dialog.last_message
@@ -143,32 +156,61 @@ pub async fn start_loading_chats(
             unread_count: 0, // TODO: get actual unread count
             chat_type: chat_type.to_string(),
             last_message: last_message_text.clone(),
-            avatar_path: avatar_path.clone(),
+            avatar_path: cached_avatar.clone(),
         };
 
-        // Save to database
-        if let Some(ref db) = db {
-            if let Err(e) = db.save_chat_async(
-                account_id.clone(),
-                chat_id,
-                chat_type.to_string(),
-                title.clone(),
-                username.clone(),
-                avatar_path.clone(),
-                last_message_text.clone(),
-                0,    // unread_count
-            ).await {
-                tracing::warn!(chat_id = chat_id, error = %e, "Failed to save chat to database");
-            } else {
-                tracing::debug!(chat_id = chat_id, "Saved chat to database");
-            }
-        }
-
-        // EMIT IMMEDIATELY
+        // EMIT IMMEDIATELY — no waiting for avatar download or DB save
         app.emit("chat-loaded", &chat)
             .map_err(|e| format!("Failed to emit chat event: {}", e))?;
 
         count += 1;
+
+        // Background: avatar download + DB save (fire-and-forget)
+        {
+            let client = wrapper.client.clone();
+            let peer = peer.clone();
+            let app = app.clone();
+            let db = db.clone();
+            let account_id = account_id.clone();
+            let avatars_dir = avatars_dir.clone();
+            let chat_type = chat_type.to_string();
+            let title = title.clone();
+            let username = username.clone();
+            let last_message_text = last_message_text.clone();
+            let cached_avatar = cached_avatar.clone();
+
+            tokio::spawn(async move {
+                // Download avatar if not cached
+                let avatar_path = if cached_avatar.is_none() {
+                    let path = download_avatar_for_peer(&client, &peer, chat_id, &avatars_dir).await;
+                    if let Some(ref p) = path {
+                        let _ = app.emit("chat-avatar-updated", ChatAvatarUpdatedEvent {
+                            chat_id,
+                            avatar_path: p.clone(),
+                        });
+                    }
+                    path
+                } else {
+                    cached_avatar
+                };
+
+                // Save to DB
+                if let Some(ref db) = db {
+                    if let Err(e) = db.save_chat_async(
+                        account_id,
+                        chat_id,
+                        chat_type,
+                        title,
+                        username,
+                        avatar_path,
+                        last_message_text,
+                        0,
+                    ).await {
+                        tracing::warn!(chat_id = chat_id, error = %e, "Failed to save chat to database");
+                    }
+                }
+            });
+        }
     }
 
     app.emit("chats-loading-complete", count)

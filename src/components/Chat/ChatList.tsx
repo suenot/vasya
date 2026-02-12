@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Chat } from '../../types/telegram';
 import { ChatSearchBar } from './ChatSearchBar';
 import { ChatFilters } from './ChatFilters';
@@ -18,7 +19,7 @@ interface ChatListProps {
   onContextMenu: (e: React.MouseEvent, chatId: number) => void;
 }
 
-export const ChatList = ({
+export const ChatList = memo(({
   chats,
   loading,
   error,
@@ -72,4 +73,4 @@ export const ChatList = ({
       </div>
     </>
   );
-};
+});

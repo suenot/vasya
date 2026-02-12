@@ -30,12 +30,12 @@ pub async fn request_login_code(
         .await
         .map_err(|e| format!("Failed to create client: {}", e))?;
 
-    let api_hash = &client_manager.api_hash;
+    let api_hash = client_manager.api_hash();
 
     // Add timeout to prevent infinite hang
     let token = tokio::time::timeout(
         std::time::Duration::from_secs(30),
-        wrapper.client.request_login_code(&phone, api_hash),
+        wrapper.client.request_login_code(&phone, &api_hash),
     )
     .await
     .map_err(|_| "Request timed out. Check your internet connection.".to_string())?

@@ -282,6 +282,15 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
         <div className="account-settings" onClick={(e) => e.stopPropagation()}>
           {/* Боковая панель с разделами */}
           <aside className="settings-sidebar">
+            <div className="settings-sidebar-header">
+              <button className="icon-button" onClick={onClose} title="Закрыть">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <h2>Настройки</h2>
+            </div>
+
             <div
               className="settings-profile"
               onClick={() => setShowProfileEdit(true)}
@@ -298,64 +307,64 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
               </div>
             </div>
 
-          <nav className="settings-nav">
-            <button
-              className={`settings-nav-item ${activeSection === 'general' ? 'active' : ''}`}
-              onClick={() => setActiveSection('general')}
-            >
-              <span className="settings-nav-icon">⚙️</span>
-              Основные
-            </button>
-            <button
-              className={`settings-nav-item ${activeSection === 'privacy' ? 'active' : ''}`}
-              onClick={() => setActiveSection('privacy')}
-            >
-              <span className="settings-nav-icon">🔒</span>
-              Конфиденциальность
-            </button>
-            <button
-              className={`settings-nav-item ${activeSection === 'data' ? 'active' : ''}`}
-              onClick={() => setActiveSection('data')}
-            >
-              <span className="settings-nav-icon">💾</span>
-              Данные и память
-            </button>
-            <button
-              className={`settings-nav-item ${activeSection === 'folders' ? 'active' : ''}`}
-              onClick={() => setActiveSection('folders')}
-            >
-              <span className="settings-nav-icon">📁</span>
-              Папки
-            </button>
-            <button
-              className={`settings-nav-item ${activeSection === 'devices' ? 'active' : ''}`}
-              onClick={() => setActiveSection('devices')}
-            >
-              <span className="settings-nav-icon">📱</span>
-              Устройства
-            </button>
-            <button
-              className={`settings-nav-item ${activeSection === 'language' ? 'active' : ''}`}
-              onClick={() => setActiveSection('language')}
-            >
-              <span className="settings-nav-icon">🌐</span>
-              Язык
-            </button>
-          </nav>
-        </aside>
+            <nav className="settings-nav">
+              <button
+                className={`settings-nav-item ${activeSection === 'general' ? 'active' : ''}`}
+                onClick={() => setActiveSection('general')}
+              >
+                <span className="settings-nav-icon">⚙️</span>
+                Основные
+              </button>
+              <button
+                className={`settings-nav-item ${activeSection === 'privacy' ? 'active' : ''}`}
+                onClick={() => setActiveSection('privacy')}
+              >
+                <span className="settings-nav-icon">🔒</span>
+                Конфиденциальность
+              </button>
+              <button
+                className={`settings-nav-item ${activeSection === 'data' ? 'active' : ''}`}
+                onClick={() => setActiveSection('data')}
+              >
+                <span className="settings-nav-icon">💾</span>
+                Данные и память
+              </button>
+              <button
+                className={`settings-nav-item ${activeSection === 'folders' ? 'active' : ''}`}
+                onClick={() => setActiveSection('folders')}
+              >
+                <span className="settings-nav-icon">📁</span>
+                Папки
+              </button>
+              <button
+                className={`settings-nav-item ${activeSection === 'devices' ? 'active' : ''}`}
+                onClick={() => setActiveSection('devices')}
+              >
+                <span className="settings-nav-icon">📱</span>
+                Устройства
+              </button>
+              <button
+                className={`settings-nav-item ${activeSection === 'language' ? 'active' : ''}`}
+                onClick={() => setActiveSection('language')}
+              >
+                <span className="settings-nav-icon">🌐</span>
+                Язык
+              </button>
+            </nav>
+          </aside>
 
-        {/* Основной контент */}
-        <main className="settings-main">
-          <button className="settings-close" onClick={onClose}>
-            ✕
-          </button>
-          {renderContent()}
-        </main>
+          {/* Основной контент */}
+          <main className="settings-main">
+            <button className="settings-close" onClick={onClose}>
+              ✕
+            </button>
+            {renderContent()}
+          </main>
+        </div>
       </div>
-    </div>
 
-    {/* Модальное окно редактирования профиля */}
-    {showProfileEdit && <ProfileSettings onClose={() => setShowProfileEdit(false)} />}
-  </>
+      {/* Модальное окно редактирования профиля */}
+      {showProfileEdit && <ProfileSettings onClose={() => setShowProfileEdit(false)} />}
+    </>
   );
 };

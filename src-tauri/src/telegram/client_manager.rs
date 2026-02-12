@@ -9,7 +9,7 @@ use grammers_session::storages::SqliteSession;
 use grammers_session::updates::UpdatesLike;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock as StdRwLock};
 use tauri::AppHandle;
 use tokio::sync::{mpsc, RwLock};
 use tokio::task::JoinHandle;
@@ -41,8 +41,8 @@ pub struct TelegramClientManager {
     /// Stored updates receivers, to be consumed when starting updates handler
     updates_receivers: Arc<RwLock<HashMap<String, mpsc::UnboundedReceiver<UpdatesLike>>>>,
     pub sessions_dir: PathBuf,
-    pub api_id: i32,
-    pub api_hash: String,
+    /// API credentials behind a std RwLock for in-place updates without replacing the manager
+    credentials: StdRwLock<(i32, String)>,
 }
 
 impl TelegramClientManager {
@@ -52,9 +52,23 @@ impl TelegramClientManager {
             tasks: Arc::new(RwLock::new(HashMap::new())),
             updates_receivers: Arc::new(RwLock::new(HashMap::new())),
             sessions_dir,
-            api_id,
-            api_hash,
+            credentials: StdRwLock::new((api_id, api_hash)),
         }
+    }
+
+    /// Get the current API ID
+    pub fn api_id(&self) -> i32 {
+        self.credentials.read().unwrap().0
+    }
+
+    /// Get the current API Hash
+    pub fn api_hash(&self) -> String {
+        self.credentials.read().unwrap().1.clone()
+    }
+
+    /// Update API credentials in place (no manager replacement needed)
+    pub fn update_credentials(&self, api_id: i32, api_hash: String) {
+        *self.credentials.write().unwrap() = (api_id, api_hash);
     }
 
     /// Create a new client and SenderPool, store wrapper, return it.
@@ -71,7 +85,7 @@ impl TelegramClientManager {
                 .context("Failed to open/create session file")?,
         );
 
-        let pool = SenderPool::new(session, self.api_id);
+        let pool = SenderPool::new(session, self.api_id());
         let client = Client::new(&pool);
 
         // Destructure pool — runner drives the network, save updates receiver
@@ -148,19 +162,29 @@ impl TelegramClientManager {
         Ok(())
     }
 
-    /// Stop the updates handler for an account
+    /// Stop the updates handler for an account gracefully.
+    /// Sends shutdown signal and waits for the task to finish (up to 5s).
     async fn stop_updates(&self, account_id: &str) {
-        let mut tasks = self.tasks.write().await;
-        if let Some(account_tasks) = tasks.remove(account_id) {
-            // Send shutdown signal
+        let task = self.tasks.write().await.remove(account_id);
+        if let Some(account_tasks) = task {
+            // Send shutdown signal first
             if let Some(tx) = account_tasks.shutdown_tx {
                 let _ = tx.send(());
             }
-            // Abort the task if still running
+            // Wait for graceful shutdown (avoids panic in UpdateStream::drop)
             if let Some(handle) = account_tasks.updates_handle {
-                handle.abort();
+                match tokio::time::timeout(std::time::Duration::from_secs(5), handle).await {
+                    Ok(Ok(())) => {
+                        tracing::info!(account_id = %account_id, "Updates handler stopped gracefully");
+                    }
+                    Ok(Err(e)) => {
+                        tracing::warn!(account_id = %account_id, error = %e, "Updates handler panicked during shutdown");
+                    }
+                    Err(_) => {
+                        tracing::warn!(account_id = %account_id, "Updates handler did not stop within timeout, detaching");
+                    }
+                }
             }
-            tracing::info!(account_id = %account_id, "Updates handler stopped");
         }
     }
 
@@ -230,7 +254,7 @@ impl TelegramClientManager {
                     .context("Failed to open session file")?,
             );
 
-            let pool = SenderPool::new(session, self.api_id);
+            let pool = SenderPool::new(session, self.api_id());
             let client = Client::new(&pool);
 
             let SenderPool {

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { MediaInfo } from '../types/telegram';
 
-interface MessageBase {
+export interface MessageBase {
   id: number;
   chat_id: number;
   from_user_id?: number;

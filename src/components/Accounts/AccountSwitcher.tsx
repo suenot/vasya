@@ -19,7 +19,7 @@ export const AccountSwitcher = () => {
 
   const handleRemove = (accountId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('Удалить этот аккаунт?')) {
+    if (confirm('Remove this account?')) {
       removeAccount(accountId);
     }
   };
@@ -83,7 +83,7 @@ export const AccountSwitcher = () => {
                   <button
                     className="account-remove"
                     onClick={(e) => handleRemove(account.id, e)}
-                    title="Удалить аккаунт"
+                    title="Remove account"
                   >
                     ×
                   </button>
@@ -93,7 +93,7 @@ export const AccountSwitcher = () => {
           </div>
 
           <button className="add-account-button" onClick={handleAddAccount}>
-            + Добавить аккаунт
+            + Add account
           </button>
         </div>
       )}

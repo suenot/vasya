@@ -10,7 +10,11 @@ interface AuthToken {
   phone: string;
 }
 
-export const LoginForm = () => {
+interface LoginFormProps {
+  onCancel?: () => void;
+}
+
+export const LoginForm = ({ onCancel }: LoginFormProps) => {
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
@@ -119,6 +123,7 @@ export const LoginForm = () => {
             <input type="tel" className="login-input" placeholder="+7 900 123 45 67" value={phone} onChange={(e) => setPhone(e.target.value)} autoFocus />
             {error && <div className="login-error">{error}</div>}
             <button type="submit" className="login-button">Продолжить</button>
+            {onCancel && <button type="button" className="login-button-secondary" onClick={onCancel}>Отмена</button>}
           </form>
         )}
 
