@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, memo } from 'react';
+import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef, memo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useMessagesStore, MessageBase } from '../../store/messagesStore';
 import { useTauriEvent } from '../../hooks/useTauriEvent';
@@ -11,6 +11,18 @@ interface MessageListProps {
   accountId: string;
   chatId: number;
   chatTitle: string;
+  highlightedMessageId?: number | null;
+}
+
+export interface MessageListHandle {
+  scrollToMessage: (messageId: number) => void;
+}
+
+// Media info from real-time events (no file_path — not downloaded yet)
+interface MediaInfoEvent {
+  mediaType: string;
+  fileSize?: number;
+  mimeType?: string;
 }
 
 // Event payload types matching Rust updates.rs (camelCase via serde rename_all)
@@ -24,6 +36,7 @@ interface NewMessageEvent {
   fromUserId?: number;
   hasMedia: boolean;
   mediaType?: string;
+  media?: MediaInfoEvent[];
 }
 
 interface MessageDeletedEvent {
@@ -39,12 +52,16 @@ const formatTime = (timestamp: number) =>
   });
 
 // Memoized message item — only re-renders when its own props change
-const MessageItem = memo(({ message, accountId, chatId }: {
+const MessageItem = memo(({ message, accountId, chatId, isHighlighted }: {
   message: MessageBase;
   accountId: string;
   chatId: number;
+  isHighlighted?: boolean;
 }) => (
-  <div className={`message ${message.is_outgoing ? 'outgoing' : 'incoming'}`}>
+  <div
+    className={`message ${message.is_outgoing ? 'outgoing' : 'incoming'}${isHighlighted ? ' highlighted' : ''}`}
+    data-message-id={message.id}
+  >
     <div className="message-content">
       {message.media && message.media.length > 0 && (
         <div className="message-media-standalone">
@@ -86,8 +103,19 @@ const MessageItem = memo(({ message, accountId, chatId }: {
 // when messagesByChat[chatId] is undefined (Object.is([], []) === false)
 const EMPTY_MESSAGES: any[] = [];
 
-export const MessageList = ({ accountId, chatId, chatTitle }: MessageListProps) => {
+export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ accountId, chatId, chatTitle, highlightedMessageId }, ref) => {
   const messages = useMessagesStore((s) => s.messagesByChat[chatId] ?? EMPTY_MESSAGES);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Expose scrollToMessage to parent
+  useImperativeHandle(ref, () => ({
+    scrollToMessage: (messageId: number) => {
+      const el = containerRef.current?.querySelector(`[data-message-id="${messageId}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    },
+  }), []);
   const hasMore = useMessagesStore((s) => s.hasMoreByChat[chatId] ?? true);
   const setMessages = useMessagesStore((s) => s.setMessages);
   const prependMessages = useMessagesStore((s) => s.prependMessages);
@@ -141,6 +169,12 @@ export const MessageList = ({ accountId, chatId, chatTitle }: MessageListProps) 
   // Real-time: new message
   useTauriEvent<NewMessageEvent>('telegram:new-message', useCallback((evt) => {
     if (evt.chatId !== chatId) return;
+    // Convert event media info to the format expected by the store
+    const media = evt.media?.map((m) => ({
+      media_type: m.mediaType as any,
+      file_size: m.fileSize,
+      mime_type: m.mimeType,
+    }));
     addMessage(chatId, {
       id: evt.id,
       chat_id: evt.chatId,
@@ -148,6 +182,7 @@ export const MessageList = ({ accountId, chatId, chatTitle }: MessageListProps) 
       text: evt.text || undefined,
       date: evt.date,
       is_outgoing: evt.isOutgoing,
+      media,
     });
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
   }, [chatId, addMessage]));
@@ -195,7 +230,7 @@ export const MessageList = ({ accountId, chatId, chatTitle }: MessageListProps) 
 
   return (
     <div className="messages-wrapper">
-      <div className="messages-container" onScroll={handleScroll}>
+      <div className="messages-container" ref={containerRef} onScroll={handleScroll}>
         {loadingRef.current && messages.length === 0 ? (
           <div className="messages-loading"><p>Загрузка сообщений...</p></div>
         ) : messages.length === 0 ? (
@@ -208,6 +243,7 @@ export const MessageList = ({ accountId, chatId, chatTitle }: MessageListProps) 
                 message={message}
                 accountId={accountId}
                 chatId={chatId}
+                isHighlighted={highlightedMessageId === message.id}
               />
             ))}
             <div ref={messagesEndRef} />
@@ -221,4 +257,4 @@ export const MessageList = ({ accountId, chatId, chatTitle }: MessageListProps) 
       />
     </div>
   );
-};
+});

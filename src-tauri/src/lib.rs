@@ -93,6 +93,7 @@ pub fn run() {
             commands::send_message,
             commands::download_media,
             commands::download_chat_photo,
+            commands::search_messages,
         ])
         .setup(|app| {
             let app_dir = app
@@ -136,12 +137,22 @@ pub fn run() {
             let sessions_dir = app_dir.join("sessions");
             std::fs::create_dir_all(&sessions_dir).expect("Failed to create sessions directory");
 
+            // Compile-time defaults from .env (baked into binary), with runtime override
             let api_id = std::env::var("TELEGRAM_API_ID")
                 .ok()
                 .and_then(|s| s.parse::<i32>().ok())
-                .unwrap_or(0);
+                .unwrap_or_else(|| {
+                    option_env!("TELEGRAM_API_ID")
+                        .and_then(|s| s.parse::<i32>().ok())
+                        .unwrap_or(0)
+                });
 
-            let api_hash = std::env::var("TELEGRAM_API_HASH").unwrap_or_default();
+            let api_hash = std::env::var("TELEGRAM_API_HASH")
+                .unwrap_or_else(|_| {
+                    option_env!("TELEGRAM_API_HASH")
+                        .unwrap_or_default()
+                        .to_string()
+                });
 
             let client_manager =
                 telegram::TelegramClientManager::new(sessions_dir, api_id, api_hash);

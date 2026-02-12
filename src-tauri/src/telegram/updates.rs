@@ -4,13 +4,22 @@
 //! and emits them as Tauri events to the frontend.
 
 use grammers_client::client::updates::UpdateStream;
-use grammers_client::types::{Message as GrammersMessage, Update};
+use grammers_client::types::{Message as GrammersMessage, Media, Update};
 use grammers_session::defs::PeerId;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::broadcast;
 
 use crate::commands::media_types::classify_media_type;
+
+/// Media info included in real-time events (no file_path — not downloaded yet)
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaInfoEvent {
+    pub media_type: String,
+    pub file_size: Option<u64>,
+    pub mime_type: Option<String>,
+}
 
 /// Events emitted to the frontend
 #[derive(Debug, Clone, Serialize)]
@@ -25,6 +34,7 @@ pub struct NewMessageEvent {
     pub account_id: String,
     pub has_media: bool,
     pub media_type: Option<String>,
+    pub media: Option<Vec<MediaInfoEvent>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -52,12 +62,31 @@ pub struct ConnectionStatusEvent {
     pub status: String, // "connected", "reconnecting", "disconnected"
 }
 
+/// Extract media info for events (without file_path)
+fn extract_media_info_for_event(media: &Media) -> MediaInfoEvent {
+    let media_type = classify_media_type(media).to_string();
+    let (file_size, mime_type) = match media {
+        Media::Document(doc) => (
+            Some(doc.size() as u64),
+            doc.mime_type().map(|s| s.to_string()),
+        ),
+        Media::Photo(_) => (None, Some("image/jpeg".to_string())),
+        _ => (None, None),
+    };
+    MediaInfoEvent {
+        media_type,
+        file_size,
+        mime_type,
+    }
+}
+
 /// Convert a grammers Message to our event format
 fn message_to_event(msg: &GrammersMessage, account_id: &str) -> NewMessageEvent {
     let chat_id = msg.peer_id().bot_api_dialog_id();
 
     let has_media = msg.media().is_some();
-    let media_type = msg.media().map(|m| classify_media_type(&m).to_string());
+    let media_type = msg.media().as_ref().map(|m| classify_media_type(m).to_string());
+    let media = msg.media().as_ref().map(|m| vec![extract_media_info_for_event(m)]);
 
     NewMessageEvent {
         id: msg.id(),
@@ -73,6 +102,7 @@ fn message_to_event(msg: &GrammersMessage, account_id: &str) -> NewMessageEvent 
         account_id: account_id.to_string(),
         has_media,
         media_type,
+        media,
     }
 }
 

@@ -9,6 +9,7 @@ use crate::AppState;
 use crate::commands::messages::MediaInfo;
 use super::media_types::classify_media_type;
 use super::peer_resolve::resolve_peer;
+use super::flood_wait::with_flood_wait_retry;
 
 /// Download media from a message
 #[tauri::command]
@@ -85,7 +86,12 @@ pub async fn download_media(
     let timestamp = chrono::Utc::now().timestamp();
     let file_path = media_dir.join(format!("media_{}_{}.{}", message_id, timestamp, extension));
 
-    match wrapper.client.download_media(&media, &file_path).await {
+    // Download with FLOOD_WAIT retry
+    let download_result = with_flood_wait_retry(|| async {
+        wrapper.client.download_media(&media, &file_path).await
+    }).await;
+
+    match download_result {
         Ok(()) => {
             // Verify file exists
             tokio::fs::metadata(&file_path)
@@ -140,20 +146,31 @@ pub async fn download_chat_photo(
         return Ok(Some(file_path.to_string_lossy().to_string()));
     }
 
-    let mut photos = wrapper.client.iter_profile_photos(&peer);
-    match photos.next().await {
-        Ok(Some(photo)) => match wrapper.client.download_media(&photo, &file_path).await {
-            Ok(()) => {
-                tokio::fs::metadata(&file_path)
-                    .await
-                    .map_err(|_| "Downloaded file not found".to_string())?;
-                Ok(Some(file_path.to_string_lossy().to_string()))
+    // Get profile photo with FLOOD_WAIT retry
+    let photo_result = with_flood_wait_retry(|| async {
+        let mut photos = wrapper.client.iter_profile_photos(&peer);
+        photos.next().await
+    }).await;
+
+    match photo_result {
+        Ok(Some(photo)) => {
+            let download_result = with_flood_wait_retry(|| async {
+                wrapper.client.download_media(&photo, &file_path).await
+            }).await;
+
+            match download_result {
+                Ok(()) => {
+                    tokio::fs::metadata(&file_path)
+                        .await
+                        .map_err(|_| "Downloaded file not found".to_string())?;
+                    Ok(Some(file_path.to_string_lossy().to_string()))
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "Failed to download profile photo");
+                    Ok(None)
+                }
             }
-            Err(e) => {
-                tracing::warn!(error = %e, "Failed to download profile photo");
-                Ok(None)
-            }
-        },
+        }
         Ok(None) => Ok(None),
         Err(e) => {
             tracing::warn!(error = %e, "Error getting profile photos");

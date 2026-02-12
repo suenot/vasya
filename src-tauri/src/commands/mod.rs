@@ -9,6 +9,7 @@ pub mod messages;
 pub mod media;
 pub mod media_types;
 pub mod peer_resolve;
+pub mod flood_wait;
 
 pub use auth::*;
 pub use settings::*;

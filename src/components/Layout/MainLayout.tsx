@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { AccountSettings } from '../Settings/AccountSettings';
 import { AccountSwitcher } from '../Accounts/AccountSwitcher';
-import { MessageList } from '../Messages/MessageList';
+import { MessageList, MessageListHandle } from '../Messages/MessageList';
 import { ChatList, ChatHeader, ChatContextMenu } from '../Chat';
 import { useAccountsStore } from '../../store/accountsStore';
 import { useChatsStore } from '../../store/chatsStore';
@@ -35,6 +35,8 @@ export const MainLayout = () => {
     return saved ? new Set(JSON.parse(saved)) : new Set();
   });
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; chatId: number } | null>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<number | null>(null);
+  const messageListRef = useRef<MessageListHandle>(null);
 
   const debouncedSearch = useDebounce(searchQuery, 200);
 
@@ -178,6 +180,13 @@ export const MainLayout = () => {
     [chats, selectedChatId]
   );
 
+  const handleScrollToMessage = useCallback((messageId: number) => {
+    setHighlightedMessageId(messageId);
+    messageListRef.current?.scrollToMessage(messageId);
+    // Clear highlight after animation
+    setTimeout(() => setHighlightedMessageId(null), 2000);
+  }, []);
+
   return (
     <div className="main-layout">
       <aside className="sidebar">
@@ -212,14 +221,16 @@ export const MainLayout = () => {
 
       <main className="content">
         <div className="content-bg" />
-        <ChatHeader chat={selectedChat} />
+        <ChatHeader chat={selectedChat} accountId={activeAccount?.id} onScrollToMessage={handleScrollToMessage} />
 
         <div className="messages-area">
           {selectedChat && activeAccount ? (
             <MessageList
+              ref={messageListRef}
               accountId={activeAccount.id}
               chatId={selectedChat.id}
               chatTitle={selectedChat.title}
+              highlightedMessageId={highlightedMessageId}
             />
           ) : (
             <div className="empty-chat">

@@ -123,6 +123,74 @@ pub async fn get_messages(
     Ok(messages)
 }
 
+/// Search messages in a chat
+#[tauri::command]
+pub async fn search_messages(
+    account_id: String,
+    chat_id: i64,
+    query: String,
+    limit: Option<usize>,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<Vec<Message>, String> {
+    tracing::info!(
+        account_id = %account_id,
+        chat_id = chat_id,
+        query = %query,
+        "Searching messages"
+    );
+
+    if query.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let state_guard = state.read().await;
+    let client_manager = state_guard
+        .client_manager
+        .as_ref()
+        .ok_or("Client manager not initialized")?;
+
+    let wrapper = client_manager
+        .get_client(&account_id)
+        .await
+        .ok_or("Client not found for this account")?;
+
+    let chat = resolve_peer(&wrapper, chat_id).await?;
+
+    let limit = limit.unwrap_or(50);
+    let mut search_iter = wrapper.client.search_messages(&chat).query(&query);
+
+    let mut messages = Vec::with_capacity(limit);
+    let mut count = 0;
+
+    while let Some(msg) = search_iter
+        .next()
+        .await
+        .map_err(|e| format!("Failed to search messages: {}", e))?
+    {
+        messages.push(Message {
+            id: msg.id(),
+            chat_id,
+            from_user_id: msg.sender().map(|s| PeerRef::from(s).id.bot_api_dialog_id()),
+            text: if msg.text().is_empty() {
+                None
+            } else {
+                Some(msg.text().to_string())
+            },
+            date: msg.date().timestamp(),
+            is_outgoing: msg.outgoing(),
+            media: extract_media_info(&msg),
+        });
+
+        count += 1;
+        if count >= limit {
+            break;
+        }
+    }
+
+    tracing::info!(count = messages.len(), chat_id = chat_id, query = %query, "Search results");
+    Ok(messages)
+}
+
 /// Send a message to a chat
 #[tauri::command]
 pub async fn send_message(

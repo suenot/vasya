@@ -441,6 +441,126 @@
 }
 
 
+/* Header Search Bar */
+.header-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.header-search-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.header-search-input {
+  flex: 1;
+  padding: 6px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-primary);
+  transition: all 0.2s;
+}
+
+.header-search-input:focus {
+  background: var(--bg-primary);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 1px var(--accent-color);
+}
+
+.header-search-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.header-search-info {
+  min-width: 50px;
+  text-align: center;
+}
+
+.search-status {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.icon-button-sm {
+  width: 30px;
+  height: 30px;
+}
+
+/* Chat Options Dropdown Menu */
+.chat-options-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 2000;
+  min-width: 200px;
+  padding: 4px;
+  animation: contextMenuFadeIn 0.1s ease-out;
+}
+
+.chat-options-menu-item {
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.chat-options-menu-item:hover {
+  background: var(--sidebar-hover);
+}
+
+.chat-options-menu-item.danger {
+  color: #e53935;
+}
+
+.chat-options-menu-item.danger:hover {
+  background: rgba(229, 57, 53, 0.08);
+}
+
+.chat-options-menu-separator {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 0;
+}
+
+/* Message highlight (search navigation) */
+.message.highlighted .message-bubble,
+.message.highlighted .message-media-standalone {
+  animation: messageHighlight 2s ease-out;
+}
+
+@keyframes messageHighlight {
+  0% { background-color: rgba(51, 144, 236, 0.3); }
+  100% { background-color: transparent; }
+}
+
+:root[data-theme="dark"] .message.highlighted .message-bubble,
+:root[data-theme="dark"] .message.highlighted .message-media-standalone {
+  animation: messageHighlightDark 2s ease-out;
+}
+
+@keyframes messageHighlightDark {
+  0% { background-color: rgba(82, 136, 193, 0.4); }
+  100% { background-color: transparent; }
+}
+
 /* Empty state */
 .empty-state {
   padding: 32px 16px;

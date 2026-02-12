@@ -3,12 +3,16 @@
 use std::sync::Arc;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager, State};
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, Semaphore};
 use serde::{Deserialize, Serialize};
 use grammers_client::types::Peer;
 use grammers_session::defs::PeerRef;
 
 use crate::AppState;
+use super::flood_wait::with_flood_wait_retry;
+
+/// Max concurrent avatar downloads to avoid FLOOD_WAIT
+const MAX_CONCURRENT_AVATAR_DOWNLOADS: usize = 3;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -99,6 +103,9 @@ pub async fn start_loading_chats(
     tokio::fs::create_dir_all(&avatars_dir).await
         .map_err(|e| format!("Failed to create avatars directory: {}", e))?;
 
+    // Semaphore to limit concurrent avatar downloads
+    let avatar_semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_AVATAR_DOWNLOADS));
+
     // Get all dialogs (chats) and emit each one IMMEDIATELY.
     // Avatar downloads and DB saves run in background tasks.
     let mut dialogs = wrapper.client.iter_dialogs();
@@ -178,11 +185,12 @@ pub async fn start_loading_chats(
             let username = username.clone();
             let last_message_text = last_message_text.clone();
             let cached_avatar = cached_avatar.clone();
+            let semaphore = Arc::clone(&avatar_semaphore);
 
             tokio::spawn(async move {
-                // Download avatar if not cached
+                // Download avatar if not cached (rate-limited by semaphore)
                 let avatar_path = if cached_avatar.is_none() {
-                    let path = download_avatar_for_peer(&client, &peer, chat_id, &avatars_dir).await;
+                    let path = download_avatar_for_peer(&client, &peer, chat_id, &avatars_dir, &semaphore).await;
                     if let Some(ref p) = path {
                         let _ = app.emit("chat-avatar-updated", ChatAvatarUpdatedEvent {
                             chat_id,
@@ -243,6 +251,8 @@ pub async fn get_chats(
     tokio::fs::create_dir_all(&avatars_dir).await
         .map_err(|e| format!("Failed to create avatars directory: {}", e))?;
 
+    let semaphore = Semaphore::new(MAX_CONCURRENT_AVATAR_DOWNLOADS);
+
     let mut dialogs = wrapper.client.iter_dialogs();
     let mut chats = Vec::new();
 
@@ -262,7 +272,7 @@ pub async fn get_chats(
         };
 
         let chat_id = PeerRef::from(peer).id.bot_api_dialog_id();
-        let avatar_path = download_avatar_for_peer(&wrapper.client, peer, chat_id, &avatars_dir).await;
+        let avatar_path = download_avatar_for_peer(&wrapper.client, peer, chat_id, &avatars_dir, &semaphore).await;
 
         chats.push(Chat {
             id: chat_id,
@@ -280,11 +290,13 @@ pub async fn get_chats(
 
 /// Helper function to download avatar for a peer.
 /// The `avatars_dir` must be an absolute path (derived from app_data_dir).
+/// Uses a semaphore to limit concurrent downloads and handles FLOOD_WAIT.
 async fn download_avatar_for_peer(
     client: &grammers_client::Client,
     peer: &Peer,
     chat_id: i64,
     avatars_dir: &PathBuf,
+    semaphore: &Semaphore,
 ) -> Option<String> {
     let file_path = avatars_dir.join(format!("chat_{}.jpg", chat_id.abs()));
 
@@ -294,13 +306,23 @@ async fn download_avatar_for_peer(
         return Some(file_path.to_string_lossy().to_string());
     }
 
-    // Try to get and download the first profile photo
-    let mut photos = client.iter_profile_photos(peer);
+    // Acquire semaphore permit to limit concurrent downloads
+    let _permit = semaphore.acquire().await.ok()?;
 
-    match photos.next().await {
+    // Try to get and download the first profile photo (with FLOOD_WAIT retry)
+    let photo_result = with_flood_wait_retry(|| async {
+        let mut photos = client.iter_profile_photos(peer);
+        photos.next().await
+    }).await;
+
+    match photo_result {
         Ok(Some(photo)) => {
-            // Download the photo
-            match client.download_media(&photo, &file_path).await {
+            // Download the photo (with FLOOD_WAIT retry)
+            let download_result = with_flood_wait_retry(|| async {
+                client.download_media(&photo, &file_path).await
+            }).await;
+
+            match download_result {
                 Ok(()) => {
                     tracing::debug!(chat_id = chat_id, "Avatar downloaded");
                     Some(file_path.to_string_lossy().to_string())
