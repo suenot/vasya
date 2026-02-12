@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useMediaQueue } from '../../hooks/useMediaQueue';
 import { MediaInfo } from '../../types/telegram';
@@ -17,6 +17,9 @@ const formatFileSize = (bytes: number): string => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+// Types that auto-download when visible
+const AUTO_DOWNLOAD_TYPES = new Set(['photo', 'sticker', 'voice']);
+
 export const MediaAttachment = ({
   media,
   accountId,
@@ -26,18 +29,40 @@ export const MediaAttachment = ({
 }: MediaAttachmentProps) => {
   const [loading, setLoading] = useState(false);
   const [loadedMedia, setLoadedMedia] = useState<MediaInfo | null>(null);
+  const downloadingRef = useRef(false);
   const downloadMedia = useMediaQueue();
 
-  // Auto-download on mount (skip webpages)
+  const shouldAutoDownload = AUTO_DOWNLOAD_TYPES.has(media.media_type);
+
+  const doDownload = useCallback(async () => {
+    if (downloadingRef.current || loadedMedia) return;
+    downloadingRef.current = true;
+    setLoading(true);
+    try {
+      const result = await downloadMedia(accountId, chatId, messageId) as MediaInfo[] | null;
+      if (result && result.length > 0) {
+        setLoadedMedia(result[0]);
+      }
+    } catch {
+      // Download failed — placeholder will show
+    } finally {
+      downloadingRef.current = false;
+      setLoading(false);
+    }
+  }, [accountId, chatId, messageId, loadedMedia, downloadMedia]);
+
+  // Auto-download for photos/stickers/voice on mount
   useEffect(() => {
     if (media.media_type === 'webpage') return;
+    if (!shouldAutoDownload) return;
 
     const needsDownload = !media.file_path || media.file_path.trim() === '';
-    if (!needsDownload || loadedMedia || loading) return;
+    if (!needsDownload || loadedMedia || downloadingRef.current) return;
 
     let cancelled = false;
+    downloadingRef.current = true;
 
-    const doDownload = async () => {
+    const run = async () => {
       try {
         setLoading(true);
         const result = await downloadMedia(accountId, chatId, messageId) as MediaInfo[] | null;
@@ -45,17 +70,19 @@ export const MediaAttachment = ({
           setLoadedMedia(result[0]);
         }
       } catch {
-        // Download failed — placeholder will show
+        // Download failed
       } finally {
+        downloadingRef.current = false;
         if (!cancelled) setLoading(false);
       }
     };
 
-    doDownload();
+    run();
     return () => { cancelled = true; };
-  }, [media.file_path, media.media_type, accountId, chatId, messageId, loadedMedia, loading, downloadMedia]);
+  }, [media.file_path, media.media_type, shouldAutoDownload, accountId, chatId, messageId, loadedMedia, downloadMedia]);
 
   const currentMedia = loadedMedia || media;
+  const hasFile = currentMedia.file_path && currentMedia.file_path.trim() !== '';
 
   // WebPage preview
   if (media.media_type === 'webpage') {
@@ -76,20 +103,58 @@ export const MediaAttachment = ({
     );
   }
 
-  // Placeholder while downloading
-  if (!currentMedia.file_path || currentMedia.file_path.trim() === '') {
+  // Click-to-download placeholder for video/audio/document/videonote
+  if (!hasFile && !shouldAutoDownload) {
     return (
-      <div className="media-placeholder">
+      <div className="media-click-download" onClick={loading ? undefined : doDownload}>
         {loading ? (
-          <div>⏳ Загружаем {media.media_type}...</div>
+          <div className="media-download-progress">
+            <div className="media-download-spinner" />
+            <span>Downloading {media.media_type}...</span>
+          </div>
         ) : (
-          <div>📎 {media.media_type} (не удалось загрузить)</div>
+          <div className="media-download-prompt">
+            <div className="media-download-icon">
+              {media.media_type === 'video' || media.media_type === 'videonote' ? (
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              ) : media.media_type === 'audio' ? (
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+              ) : (
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              )}
+            </div>
+            <span className="media-download-label">
+              {media.media_type === 'video' ? 'Video' :
+               media.media_type === 'videonote' ? 'Video message' :
+               media.media_type === 'audio' ? 'Audio' :
+               media.media_type === 'document' ? (media.file_name || 'Document') :
+               media.media_type}
+              {media.file_size ? ` (${formatFileSize(media.file_size)})` : ''}
+            </span>
+            <span className="media-download-tap">Tap to download</span>
+          </div>
         )}
       </div>
     );
   }
 
-  const fileSrc = convertFileSrc(currentMedia.file_path);
+  // Auto-download placeholder (loading state for photo/sticker/voice)
+  if (!hasFile) {
+    return (
+      <div className="media-placeholder">
+        {loading ? (
+          <div className="media-download-progress">
+            <div className="media-download-spinner" />
+            <span>Loading {media.media_type}...</span>
+          </div>
+        ) : (
+          <div>{media.media_type} (failed to load)</div>
+        )}
+      </div>
+    );
+  }
+
+  const fileSrc = convertFileSrc(currentMedia.file_path!);
 
   switch (media.media_type) {
     case 'photo':
@@ -99,6 +164,7 @@ export const MediaAttachment = ({
         </div>
       );
     case 'video':
+    case 'videonote':
       return (
         <div className="media-video">
           <video src={fileSrc} controls style={{ maxWidth: '100%', borderRadius: '8px' }} />
@@ -116,7 +182,7 @@ export const MediaAttachment = ({
       return (
         <div className="media-document">
           <a href={fileSrc} download={currentMedia.file_name} className="document-link">
-            📄 {currentMedia.file_name || 'Документ'}
+            📄 {currentMedia.file_name || 'Document'}
             {currentMedia.file_size && ` (${formatFileSize(currentMedia.file_size)})`}
           </a>
         </div>

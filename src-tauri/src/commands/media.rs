@@ -27,16 +27,17 @@ pub async fn download_media(
         "Download media requested"
     );
 
-    let state_guard = state.read().await;
-    let client_manager = state_guard
-        .client_manager
-        .as_ref()
-        .ok_or("Client manager not initialized")?;
-
-    let wrapper = client_manager
-        .get_client(&account_id)
-        .await
-        .ok_or("Client not found for this account")?;
+    let wrapper = {
+        let state_guard = state.read().await;
+        let client_manager = state_guard
+            .client_manager
+            .as_ref()
+            .ok_or("Client manager not initialized")?;
+        client_manager
+            .get_client(&account_id)
+            .await
+            .ok_or("Client not found for this account")?
+    }; // state_guard dropped here — no lock held during network I/O
 
     let chat = resolve_peer(&wrapper, chat_id).await?;
 
@@ -86,13 +87,17 @@ pub async fn download_media(
     let timestamp = chrono::Utc::now().timestamp();
     let file_path = media_dir.join(format!("media_{}_{}.{}", message_id, timestamp, extension));
 
-    // Download with FLOOD_WAIT retry
-    let download_result = with_flood_wait_retry(|| async {
+    // Download with FLOOD_WAIT retry + timeout (2 min max)
+    let download_future = with_flood_wait_retry(|| async {
         wrapper.client.download_media(&media, &file_path).await
-    }).await;
+    });
+    let download_result = tokio::time::timeout(
+        std::time::Duration::from_secs(120),
+        download_future,
+    ).await;
 
     match download_result {
-        Ok(()) => {
+        Ok(Ok(())) => {
             // Verify file exists
             tokio::fs::metadata(&file_path)
                 .await
@@ -102,9 +107,13 @@ pub async fn download_media(
             tracing::info!(message_id = message_id, "Media downloaded successfully");
             Ok(Some(vec![media_info]))
         }
-        Err(e) => {
+        Ok(Err(e)) => {
             tracing::error!(error = %e, message_id = message_id, "Failed to download media");
             Err(format!("Failed to download media: {}", e))
+        }
+        Err(_elapsed) => {
+            tracing::error!(message_id = message_id, "Media download timed out after 120s");
+            Err("Media download timed out".to_string())
         }
     }
 }
@@ -119,16 +128,17 @@ pub async fn download_chat_photo(
 ) -> Result<Option<String>, String> {
     tracing::info!(account_id = %account_id, chat_id = chat_id, "Download chat photo");
 
-    let state_guard = state.read().await;
-    let client_manager = state_guard
-        .client_manager
-        .as_ref()
-        .ok_or("Client manager not initialized")?;
-
-    let wrapper = client_manager
-        .get_client(&account_id)
-        .await
-        .ok_or("Client not found for this account")?;
+    let wrapper = {
+        let state_guard = state.read().await;
+        let client_manager = state_guard
+            .client_manager
+            .as_ref()
+            .ok_or("Client manager not initialized")?;
+        client_manager
+            .get_client(&account_id)
+            .await
+            .ok_or("Client not found for this account")?
+    };
 
     let peer = resolve_peer(&wrapper, chat_id).await?;
 

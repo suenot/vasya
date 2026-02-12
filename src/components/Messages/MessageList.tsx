@@ -46,7 +46,7 @@ interface MessageDeletedEvent {
 }
 
 const formatTime = (timestamp: number) =>
-  new Date(timestamp * 1000).toLocaleTimeString('ru-RU', {
+  new Date(timestamp * 1000).toLocaleTimeString('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -91,7 +91,7 @@ const MessageItem = memo(({ message, accountId, chatId, isHighlighted }: {
 
       {!message.text && (!message.media || message.media.length === 0) && (
         <div className="message-bubble">
-          <div className="message-text text-muted">(пустое сообщение)</div>
+          <div className="message-text text-muted">(empty message)</div>
           <div className="message-meta">{formatTime(message.date)}</div>
         </div>
       )}
@@ -106,6 +106,7 @@ const EMPTY_MESSAGES: any[] = [];
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ accountId, chatId, chatTitle, highlightedMessageId }, ref) => {
   const messages = useMessagesStore((s) => s.messagesByChat[chatId] ?? EMPTY_MESSAGES);
   const containerRef = useRef<HTMLDivElement>(null);
+  const pendingScrollRef = useRef<number | null>(null);
 
   // Expose scrollToMessage to parent
   useImperativeHandle(ref, () => ({
@@ -113,9 +114,40 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ ac
       const el = containerRef.current?.querySelector(`[data-message-id="${messageId}"]`);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
       }
+      // Message not in DOM — load messages around this ID
+      pendingScrollRef.current = messageId;
+      invoke<Message[]>('get_messages', {
+        accountId,
+        chatId,
+        offsetId: messageId + 1,
+        limit: 50,
+      }).then((fetched) => {
+        if (fetched.length > 0) {
+          useMessagesStore.getState().setMessages(chatId, fetched.reverse());
+          useMessagesStore.getState().setHasMore(chatId, true);
+        }
+      }).catch((err) => {
+        console.error('[MessageList] Failed to load messages for search:', err);
+        pendingScrollRef.current = null;
+      });
     },
-  }), []);
+  }), [accountId, chatId]);
+
+  // Scroll to pending target after messages update
+  useEffect(() => {
+    if (!pendingScrollRef.current) return;
+    const targetId = pendingScrollRef.current;
+    requestAnimationFrame(() => {
+      const el = containerRef.current?.querySelector(`[data-message-id="${targetId}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'instant', block: 'center' });
+        pendingScrollRef.current = null;
+      }
+    });
+  }, [messages]);
+
   const hasMore = useMessagesStore((s) => s.hasMoreByChat[chatId] ?? true);
   const setMessages = useMessagesStore((s) => s.setMessages);
   const prependMessages = useMessagesStore((s) => s.prependMessages);
@@ -232,9 +264,9 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ ac
     <div className="messages-wrapper">
       <div className="messages-container" ref={containerRef} onScroll={handleScroll}>
         {loadingRef.current && messages.length === 0 ? (
-          <div className="messages-loading"><p>Загрузка сообщений...</p></div>
+          <div className="messages-loading"><p>Loading messages...</p></div>
         ) : messages.length === 0 ? (
-          <div className="messages-empty"><p>Нет сообщений в чате с {chatTitle}</p></div>
+          <div className="messages-empty"><p>No messages in {chatTitle}</p></div>
         ) : (
           <div className="messages-list">
             {messages.map((message) => (

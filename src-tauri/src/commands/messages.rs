@@ -71,16 +71,17 @@ pub async fn get_messages(
         "Getting messages"
     );
 
-    let state_guard = state.read().await;
-    let client_manager = state_guard
-        .client_manager
-        .as_ref()
-        .ok_or("Client manager not initialized")?;
-
-    let wrapper = client_manager
-        .get_client(&account_id)
-        .await
-        .ok_or("Client not found for this account")?;
+    let wrapper = {
+        let state_guard = state.read().await;
+        let client_manager = state_guard
+            .client_manager
+            .as_ref()
+            .ok_or("Client manager not initialized")?;
+        client_manager
+            .get_client(&account_id)
+            .await
+            .ok_or("Client not found for this account")?
+    }; // state_guard dropped here
 
     let chat = resolve_peer(&wrapper, chat_id).await?;
 
@@ -143,16 +144,17 @@ pub async fn search_messages(
         return Ok(Vec::new());
     }
 
-    let state_guard = state.read().await;
-    let client_manager = state_guard
-        .client_manager
-        .as_ref()
-        .ok_or("Client manager not initialized")?;
-
-    let wrapper = client_manager
-        .get_client(&account_id)
-        .await
-        .ok_or("Client not found for this account")?;
+    let wrapper = {
+        let state_guard = state.read().await;
+        let client_manager = state_guard
+            .client_manager
+            .as_ref()
+            .ok_or("Client manager not initialized")?;
+        client_manager
+            .get_client(&account_id)
+            .await
+            .ok_or("Client not found for this account")?
+    }; // state_guard dropped here
 
     let chat = resolve_peer(&wrapper, chat_id).await?;
 
@@ -205,16 +207,17 @@ pub async fn send_message(
         return Err("Message text cannot be empty".to_string());
     }
 
-    let state_guard = state.read().await;
-    let client_manager = state_guard
-        .client_manager
-        .as_ref()
-        .ok_or("Client manager not initialized")?;
-
-    let wrapper = client_manager
-        .get_client(&account_id)
-        .await
-        .ok_or("Client not found for this account")?;
+    let wrapper = {
+        let state_guard = state.read().await;
+        let client_manager = state_guard
+            .client_manager
+            .as_ref()
+            .ok_or("Client manager not initialized")?;
+        client_manager
+            .get_client(&account_id)
+            .await
+            .ok_or("Client not found for this account")?
+    }; // state_guard dropped here
 
     let chat = resolve_peer(&wrapper, chat_id).await?;
 

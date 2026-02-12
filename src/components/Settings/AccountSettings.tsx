@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { ProfileSettings } from './ProfileSettings';
 import { useAccountsStore } from '../../store/accountsStore';
 import { useThemeStore, ThemeSetting } from '../../store/themeStore';
+import { useDownloadStore } from '../../store/downloadStore';
 import './AccountSettings.css';
 
 interface AccountSettingsProps {
   onClose: () => void;
 }
 
-type SettingsSection = 'general' | 'privacy' | 'data' | 'folders' | 'devices' | 'language';
+type SettingsSection = 'general' | 'privacy' | 'data' | 'downloads' | 'folders' | 'devices' | 'language';
 
 export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
   const { getActiveAccount } = useAccountsStore();
@@ -16,6 +17,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
   const [activeSection, setActiveSection] = useState<SettingsSection>('general');
   const [showProfileEdit, setShowProfileEdit] = useState(false);
 
+  const { queued, active, completed, failed, activeItems, queuedItems } = useDownloadStore();
   const activeAccount = getActiveAccount();
 
   const handleThemeChange = (newTheme: ThemeSetting) => {
@@ -242,6 +244,85 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
     </div>
   );
 
+  const renderDownloadsSettings = () => {
+    const total = active + queued;
+    return (
+      <div className="settings-content">
+        <h2>Downloads</h2>
+
+        <div className="settings-group">
+          <h3>Status</h3>
+          <div className="downloads-stats-grid">
+            <div className="downloads-stat-card">
+              <span className="downloads-stat-value stat-active">{active}</span>
+              <span className="downloads-stat-label">Active</span>
+            </div>
+            <div className="downloads-stat-card">
+              <span className="downloads-stat-value stat-queued">{queued}</span>
+              <span className="downloads-stat-label">Queued</span>
+            </div>
+            <div className="downloads-stat-card">
+              <span className="downloads-stat-value stat-done">{completed}</span>
+              <span className="downloads-stat-label">Completed</span>
+            </div>
+            {failed > 0 && (
+              <div className="downloads-stat-card">
+                <span className="downloads-stat-value stat-failed">{failed}</span>
+                <span className="downloads-stat-label">Failed</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {activeItems.length > 0 && (
+          <div className="settings-group">
+            <h3>Downloading</h3>
+            {activeItems.map((item) => (
+              <div key={`${item.chatId}_${item.messageId}`} className="settings-item">
+                <div className="settings-item-label">
+                  <div className="settings-item-title downloads-item-active">
+                    <div className="download-item-spinner" />
+                    Chat {item.chatId} / msg {item.messageId}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {queuedItems.length > 0 && (
+          <div className="settings-group">
+            <h3>Queue ({queued})</h3>
+            {queuedItems.map((item) => (
+              <div key={`${item.chatId}_${item.messageId}`} className="settings-item">
+                <div className="settings-item-label">
+                  <div className="settings-item-title downloads-item-queued">
+                    <div className="download-item-dot" />
+                    Chat {item.chatId} / msg {item.messageId}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {queued > 20 && (
+              <div className="settings-item">
+                <div className="settings-item-label">
+                  <div className="settings-item-description">+{queued - 20} more in queue</div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {total === 0 && completed === 0 && (
+          <p className="settings-placeholder">No downloads yet</p>
+        )}
+        {total === 0 && completed > 0 && (
+          <p className="settings-placeholder">All downloads completed</p>
+        )}
+      </div>
+    );
+  };
+
   const renderContent = () => {
     switch (activeSection) {
       case 'general':
@@ -250,6 +331,8 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
         return renderPrivacySettings();
       case 'data':
         return renderDataSettings();
+      case 'downloads':
+        return renderDownloadsSettings();
       case 'folders':
         return (
           <div className="settings-content">
@@ -328,6 +411,20 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
               >
                 <span className="settings-nav-icon">💾</span>
                 Данные и память
+              </button>
+              <button
+                className={`settings-nav-item ${activeSection === 'downloads' ? 'active' : ''}`}
+                onClick={() => setActiveSection('downloads')}
+              >
+                <span className="settings-nav-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                </span>
+                Downloads
+                {(active + queued > 0) && <span className="settings-nav-badge">{active + queued}</span>}
               </button>
               <button
                 className={`settings-nav-item ${activeSection === 'folders' ? 'active' : ''}`}

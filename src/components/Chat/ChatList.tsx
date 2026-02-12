@@ -34,7 +34,6 @@ export const ChatList = memo(({
 }: ChatListProps) => {
   return (
     <>
-      <ChatSearchBar value={searchQuery} onChange={onSearchChange} />
       <ChatFilters activeFilter={activeFilter} onFilterChange={onFilterChange} />
 
       <div className="chat-list">

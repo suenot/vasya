@@ -94,6 +94,8 @@ pub fn run() {
             commands::download_media,
             commands::download_chat_photo,
             commands::search_messages,
+            commands::get_my_avatar,
+            commands::delete_and_leave_chat,
         ])
         .setup(|app| {
             let app_dir = app

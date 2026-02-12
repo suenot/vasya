@@ -2,12 +2,13 @@
 
 use grammers_client::SignInError;
 use std::sync::Arc;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::telegram::auth::{AuthToken, UserInfo};
 use crate::AppState;
+use super::flood_wait::with_flood_wait_retry;
 
 /// Request login code from Telegram
 #[tauri::command]
@@ -180,6 +181,69 @@ pub async fn check_password(
         username: me.username().map(|s| s.to_string()),
         phone: wrapper.phone.clone(),
     })
+}
+
+/// Get current user's avatar (downloads if not cached)
+#[tauri::command]
+pub async fn get_my_avatar(
+    account_id: String,
+    app: AppHandle,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<Option<String>, String> {
+    let wrapper = {
+        let state_guard = state.read().await;
+        let client_manager = state_guard
+            .client_manager
+            .as_ref()
+            .ok_or("Client manager not initialized")?;
+        client_manager
+            .get_client(&account_id)
+            .await
+            .ok_or("Client not found for this account")?
+    };
+
+    let app_data_dir = app.path().app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+    let avatars_dir = app_data_dir.join("media").join("avatars");
+    tokio::fs::create_dir_all(&avatars_dir).await
+        .map_err(|e| format!("Failed to create avatars directory: {}", e))?;
+
+    let file_path = avatars_dir.join(format!("me_{}.jpg", account_id));
+
+    if file_path.exists() {
+        return Ok(Some(file_path.to_string_lossy().to_string()));
+    }
+
+    let me = wrapper.client.get_me().await
+        .map_err(|e| format!("Failed to get user info: {}", e))?;
+
+    let me_peer = grammers_client::types::Peer::User(me);
+
+    let photo_result = with_flood_wait_retry(|| async {
+        let mut photos = wrapper.client.iter_profile_photos(&me_peer);
+        photos.next().await
+    }).await;
+
+    match photo_result {
+        Ok(Some(photo)) => {
+            let download_result = with_flood_wait_retry(|| async {
+                wrapper.client.download_media(&photo, &file_path).await
+            }).await;
+
+            match download_result {
+                Ok(()) => Ok(Some(file_path.to_string_lossy().to_string())),
+                Err(e) => {
+                    tracing::warn!(error = %e, "Failed to download own avatar");
+                    Ok(None)
+                }
+            }
+        }
+        Ok(None) => Ok(None),
+        Err(e) => {
+            tracing::warn!(error = %e, "Error getting own photos");
+            Ok(None)
+        }
+    }
 }
 
 /// Logout current user

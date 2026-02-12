@@ -346,3 +346,64 @@ input:checked+.toggle-slider:before {
 .theme-preview.system {
   background: linear-gradient(135deg, #fff 50%, #17212b 50%);
 }
+
+/* Downloads section in Settings */
+.downloads-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 12px;
+  padding: 16px;
+}
+
+.downloads-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+}
+
+.downloads-stat-value {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.downloads-stat-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.downloads-item-active,
+.downloads-item-queued {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Nav badge for download count */
+.settings-nav-badge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--accent-color);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+}
+
+.settings-nav-item.active .settings-nav-badge {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.settings-nav-icon svg {
+  display: block;
+}

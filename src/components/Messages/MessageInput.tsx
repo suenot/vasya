@@ -57,7 +57,7 @@ export const MessageInput = ({ accountId, chatId, onMessageSent }: MessageInputP
     <div className="message-input-container">
       <textarea
         className="message-input"
-        placeholder="Написать сообщение..."
+        placeholder="Write a message..."
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKeyDown}

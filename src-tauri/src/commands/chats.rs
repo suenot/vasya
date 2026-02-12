@@ -288,6 +288,44 @@ pub async fn get_chats(
     Ok(chats)
 }
 
+/// Delete chat history and leave
+#[tauri::command]
+pub async fn delete_and_leave_chat(
+    account_id: String,
+    chat_id: i64,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<(), String> {
+    tracing::info!(account_id = %account_id, chat_id = chat_id, "Delete and leave chat");
+
+    let wrapper = {
+        let state_guard = state.read().await;
+        let client_manager = state_guard
+            .client_manager
+            .as_ref()
+            .ok_or("Client manager not initialized")?;
+        client_manager
+            .get_client(&account_id)
+            .await
+            .ok_or("Client not found for this account")?
+    };
+
+    // Look up peer from cache
+    let peer = {
+        let peers = wrapper.peers.read().await;
+        peers.get(&chat_id).cloned()
+            .ok_or("Chat not found in peer cache. Try reopening the chat list.")?
+    };
+
+    // Delete history and leave — delete_dialog handles all peer types:
+    // channels/megagroups -> LeaveChannel, groups -> DeleteChatUser, users -> DeleteHistory
+    wrapper.client.delete_dialog(&peer)
+        .await
+        .map_err(|e| format!("Failed to delete and leave chat: {}", e))?;
+
+    tracing::info!(account_id = %account_id, chat_id = chat_id, "Successfully deleted and left chat");
+    Ok(())
+}
+
 /// Helper function to download avatar for a peer.
 /// The `avatars_dir` must be an absolute path (derived from app_data_dir).
 /// Uses a semaphore to limit concurrent downloads and handles FLOOD_WAIT.
