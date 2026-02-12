@@ -12,7 +12,6 @@ interface ChatListProps {
   favorites: Set<number>;
   searchQuery: string;
   activeFilter: 'contacts' | 'chats' | 'favorites';
-  onSearchChange: (value: string) => void;
   onFilterChange: (filter: 'contacts' | 'chats' | 'favorites') => void;
   onChatClick: (chatId: number) => void;
   onContextMenu: (e: React.MouseEvent, chatId: number) => void;
@@ -26,7 +25,6 @@ export const ChatList = memo(({
   favorites,
   searchQuery,
   activeFilter,
-  onSearchChange,
   onFilterChange,
   onChatClick,
   onContextMenu,

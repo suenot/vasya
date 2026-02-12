@@ -256,7 +256,6 @@ export const MainLayout = () => {
             favorites={favorites}
             searchQuery={searchQuery}
             activeFilter={activeFilter}
-            onSearchChange={setSearchQuery}
             onFilterChange={setActiveFilter}
             onChatClick={handleChatClick}
             onContextMenu={handleContextMenu}
