@@ -1,5 +1,6 @@
-import { useState, useCallback, KeyboardEvent, ClipboardEvent } from 'react';
+import { useState, useCallback, KeyboardEvent, ClipboardEvent, DragEvent } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { readImage } from '@tauri-apps/plugin-clipboard-manager';
 import { useMessagesStore } from '../../store/messagesStore';
 import { Message } from '../../types/telegram';
 import './MessageInput.css';
@@ -20,26 +21,99 @@ export const MessageInput = ({ accountId, chatId, onMessageSent }: MessageInputP
   const confirmOptimisticMessage = useMessagesStore((s) => s.confirmOptimisticMessage);
   const failOptimisticMessage = useMessagesStore((s) => s.failOptimisticMessage);
 
+  const [dragOver, setDragOver] = useState(false);
+
   const clearMedia = useCallback(() => {
     if (mediaPreview) URL.revokeObjectURL(mediaPreview);
     setMediaFile(null);
     setMediaPreview(null);
   }, [mediaPreview]);
 
-  const handlePaste = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
-    const items = e.clipboardData.items;
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf('image') !== -1) {
-        const file = items[i].getAsFile();
-        if (file) {
-          clearMedia();
-          setMediaFile(file);
-          setMediaPreview(URL.createObjectURL(file));
-          break;
+  /** Set media from a File object */
+  const applyMediaFile = useCallback((file: File) => {
+    clearMedia();
+    setMediaFile(file);
+    setMediaPreview(URL.createObjectURL(file));
+  }, [clearMedia]);
+
+  /** Convert RGBA pixel data to PNG Blob via OffscreenCanvas */
+  const rgbaToPngBlob = useCallback(async (rgba: Uint8Array, width: number, height: number): Promise<Blob> => {
+    const canvas = new OffscreenCanvas(width, height);
+    const ctx = canvas.getContext('2d')!;
+    const imageData = new ImageData(new Uint8ClampedArray(rgba), width, height);
+    ctx.putImageData(imageData, 0, 0);
+    return canvas.convertToBlob({ type: 'image/png' });
+  }, []);
+
+  /** Try reading image from native Tauri clipboard */
+  const tryNativeClipboard = useCallback(async () => {
+    try {
+      const img = await readImage();
+      const { width, height } = await img.size();
+      if (width === 0 || height === 0) return false;
+      const rgba = await img.rgba();
+      const blob = await rgbaToPngBlob(rgba, width, height);
+      const file = new File([blob], `clipboard_${Date.now()}.png`, { type: 'image/png' });
+      applyMediaFile(file);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [applyMediaFile, rgbaToPngBlob]);
+
+  const handlePaste = useCallback(async (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    // Layer 1: standard clipboardData.items (works in Chromium-based webviews)
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          if (file) {
+            e.preventDefault();
+            applyMediaFile(file);
+            return;
+          }
         }
       }
     }
-  }, [clearMedia]);
+
+    // Layer 2: clipboardData.files (some WebViews put images here instead)
+    const files = e.clipboardData?.files;
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        if (files[i].type.startsWith('image/')) {
+          e.preventDefault();
+          applyMediaFile(files[i]);
+          return;
+        }
+      }
+    }
+
+    // Layer 3: native Tauri clipboard API (reads system clipboard directly)
+    const found = await tryNativeClipboard();
+    if (found) {
+      e.preventDefault();
+    }
+  }, [applyMediaFile, tryNativeClipboard]);
+
+  /** Handle drag-and-drop files */
+  const handleDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragOver(false);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      applyMediaFile(files[0]);
+    }
+  }, [applyMediaFile]);
+
+  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback(() => {
+    setDragOver(false);
+  }, []);
 
   const handleSend = useCallback(async () => {
     const trimmedText = text.trim();
@@ -95,11 +169,26 @@ export const MessageInput = ({ accountId, chatId, onMessageSent }: MessageInputP
   }, [handleSend]);
 
   return (
-    <div className="message-input-wrapper">
+    <div
+      className={`message-input-wrapper${dragOver ? ' drag-over' : ''}`}
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+    >
+      {dragOver && (
+        <div className="drop-overlay">Drop file to attach</div>
+      )}
       {mediaPreview && (
         <div className="media-preview-container">
           <div className="media-preview-item">
-            <img src={mediaPreview} alt="Paste preview" />
+            {mediaFile?.type.startsWith('image/') ? (
+              <img src={mediaPreview} alt="Paste preview" />
+            ) : (
+              <div className="file-preview">
+                <span className="file-icon">📎</span>
+                <span className="file-name">{mediaFile?.name}</span>
+              </div>
+            )}
             <button className="remove-media" onClick={clearMedia} title="Remove media">×</button>
           </div>
         </div>

@@ -79,6 +79,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .manage(Arc::new(RwLock::new(initial_state)))
         .invoke_handler(tauri::generate_handler![
             commands::request_login_code,
