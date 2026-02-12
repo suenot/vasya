@@ -1,166 +1,85 @@
-.account-switcher {
-  position: relative;
-}
-
-.account-switcher-trigger {
+.account-circles {
   display: flex;
   align-items: center;
-  padding: 4px;
-  background: transparent;
-  border: none;
+}
+
+.circles-group {
+  display: flex;
+  position: relative;
+  height: 48px;
+  align-items: center;
+}
+
+.account-circle {
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
+  border: 3px solid var(--sidebar-bg);
+  background: var(--bg-secondary);
   cursor: pointer;
-  transition: background 0.2s;
-}
-
-.account-switcher-trigger:hover {
-  background: var(--sidebar-hover);
-}
-
-.account-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--accent-color);
-  color: white;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  font-size: 14px;
-  flex-shrink: 0;
   overflow: hidden;
-}
-
-.account-avatar.small {
-  width: 32px;
-  height: 32px;
-  font-size: 14px;
-}
-
-/* Hide extra info in the trigger for the new compact design */
-.account-switcher-trigger .account-info,
-.account-switcher-trigger .account-arrow {
-  display: none;
-}
-
-.account-switcher-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  min-width: 240px;
-  background: var(--bg-primary);
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
-  overflow: hidden;
-  border: 1px solid var(--border-color);
-  animation: dropdownFadeIn 0.15s ease-out;
-}
-
-@keyframes dropdownFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.account-list {
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 4px;
-}
-
-.account-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  cursor: pointer;
-  border-radius: 8px;
-  transition: background 0.1s;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   position: relative;
+  z-index: calc(10 - var(--index));
+  margin-left: -20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.account-item:hover {
-  background: var(--sidebar-hover);
+.account-circle:first-child {
+  margin-left: 0;
 }
 
-.account-item.active {
-  background: var(--sidebar-active);
+.account-circle.active {
+  border-color: var(--accent-color);
+  z-index: 11;
+  box-shadow: 0 0 15px rgba(51, 144, 236, 0.3);
 }
 
-.account-item.active .account-name,
-.account-item.active .account-phone {
-  color: #fff;
+.circles-group:hover .account-circle {
+  margin-left: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
-.account-details {
-  flex: 1;
-  min-width: 0;
-  text-align: left;
+.circles-group:hover .account-circle:first-child {
+  margin-left: 0;
 }
 
-.account-name {
-  font-weight: 600;
-  color: var(--text-primary);
-  font-size: 14px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.account-phone {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.account-remove {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: none;
-  background: transparent;
-  color: var(--error-color);
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.account-item:hover .account-remove {
-  opacity: 1;
-}
-
-.account-remove:hover {
-  background: rgba(229, 57, 53, 0.1);
-}
-
-.add-account-button {
+.avatar-image {
   width: 100%;
-  padding: 12px;
-  background: transparent;
-  border: none;
-  border-top: 1px solid var(--border-color);
-  color: var(--accent-color);
-  font-weight: 500;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.2s;
-  text-align: left;
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  height: 100%;
+  object-fit: cover;
 }
 
-.add-account-button:hover {
-  background: var(--sidebar-hover);
+.avatar-placeholder {
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+  background: var(--accent-color);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-account {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px dashed var(--border-color);
+  color: var(--text-secondary);
+  z-index: 1;
+}
+
+.circles-group:hover .add-account {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.account-circle:hover {
+  transform: scale(1.15) translateY(-4px) !important;
+  z-index: 20 !important;
+  border-color: white;
 }

@@ -1,6 +1,5 @@
 import { memo } from 'react';
 import { Chat } from '../../types/telegram';
-import { ChatSearchBar } from './ChatSearchBar';
 import { ChatFilters } from './ChatFilters';
 import { ChatListItem } from './ChatListItem';
 import './ChatList.css';
