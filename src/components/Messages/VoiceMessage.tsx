@@ -12,7 +12,9 @@ interface VoiceMessageProps {
 export const VoiceMessage = ({ fileSrc, filePath, chatId, messageId }: VoiceMessageProps) => {
     const transcriptions = useSttStore((s) => s.transcriptions);
     const transcribing = useSttStore((s) => s.transcribing);
+    const errors = useSttStore((s) => s.errors);
     const transcribe = useSttStore((s) => s.transcribe);
+    const clearError = useSttStore((s) => s.clearError);
 
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -21,6 +23,7 @@ export const VoiceMessage = ({ fileSrc, filePath, chatId, messageId }: VoiceMess
 
     const key = `${chatId}_${messageId}`;
     const text = transcriptions[key];
+    const error = errors[key];
     const isTranscribing = transcribing.has(key);
 
     const formattedTime = useMemo(() => {
@@ -47,6 +50,7 @@ export const VoiceMessage = ({ fileSrc, filePath, chatId, messageId }: VoiceMess
 
     const handleTranscribe = () => {
         if (text || isTranscribing) return;
+        if (error) clearError(key);
         transcribe(chatId, messageId, filePath);
     };
 
@@ -112,10 +116,10 @@ export const VoiceMessage = ({ fileSrc, filePath, chatId, messageId }: VoiceMess
                 </div>
 
                 <button
-                    className={`voice-stt-button ${text ? 'active' : ''}`}
+                    className={`voice-stt-button ${text ? 'active' : ''} ${error ? 'error' : ''}`}
                     onClick={handleTranscribe}
-                    disabled={isTranscribing || !!text}
-                    title={text ? "Transcribed" : "Transcribe to text"}
+                    disabled={isTranscribing}
+                    title={error ? `Error: ${error}. Click to retry` : text ? "Transcribed" : "Transcribe to text"}
                 >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
@@ -133,6 +137,12 @@ export const VoiceMessage = ({ fileSrc, filePath, chatId, messageId }: VoiceMess
                         <div className="loading-dot"></div>
                     </div>
                     <span>Transcribing...</span>
+                </div>
+            )}
+
+            {error && (
+                <div className="voice-transcription-error">
+                    {error}
                 </div>
             )}
 

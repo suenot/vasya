@@ -23,12 +23,14 @@ interface SttState {
   // Transcription cache (chat_msg → text)
   transcriptions: Record<string, string>;
   transcribing: Set<string>;
+  errors: Record<string, string>;
 
   loadSettings: () => Promise<void>;
   saveSettings: (settings: Partial<SttSettings>) => Promise<void>;
   loadWhisperModels: () => Promise<void>;
   downloadModel: (modelName: string) => Promise<void>;
   transcribe: (chatId: number, messageId: number, filePath: string) => Promise<string | null>;
+  clearError: (key: string) => void;
 }
 
 const TRANSCRIBING_SET = new Set<string>();
@@ -44,6 +46,7 @@ export const useSttStore = create<SttState>((set, get) => ({
   whisperModels: [],
   transcriptions: {},
   transcribing: TRANSCRIBING_SET,
+  errors: {},
 
   loadSettings: async () => {
     try {
@@ -128,8 +131,19 @@ export const useSttStore = create<SttState>((set, get) => ({
     } catch (err) {
       console.error('[STT] Transcription failed:', err);
       TRANSCRIBING_SET.delete(key);
-      set({ transcribing: new Set(TRANSCRIBING_SET) });
+      const errorMsg = typeof err === 'string' ? err : (err as Error)?.message || 'Unknown error';
+      set((state) => ({
+        transcribing: new Set(TRANSCRIBING_SET),
+        errors: { ...state.errors, [key]: errorMsg },
+      }));
       return null;
     }
+  },
+
+  clearError: (key) => {
+    set((state) => {
+      const { [key]: _, ...rest } = state.errors;
+      return { errors: rest };
+    });
   },
 }));

@@ -118,6 +118,18 @@
     border-color: var(--accent-color);
 }
 
+.voice-stt-button.error {
+    border-color: #e74c3c;
+    color: #e74c3c;
+}
+
+.voice-transcription-error {
+    font-size: 12px;
+    color: #e74c3c;
+    padding: 4px 0;
+    border-top: 1px solid var(--border-color);
+}
+
 /* Transcription Text */
 .voice-transcription-container {
     margin-top: 4px;

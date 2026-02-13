@@ -117,6 +117,13 @@ pub async fn transcribe_audio(
     message_id: i32,
     file_path: String,
 ) -> Result<TranscriptionResult, String> {
+    tracing::info!(
+        chat_id = chat_id,
+        message_id = message_id,
+        file_path = %file_path,
+        "Transcribe audio requested"
+    );
+
     // Check disk cache first
     let cache_dir = transcriptions_dir(&app)?;
     let cache_file = cache_dir.join(format!("{}_{}.txt", chat_id, message_id));
@@ -135,8 +142,14 @@ pub async fn transcribe_audio(
     let settings = load_settings(&app);
 
     let result = match settings.provider {
-        SttProvider::Deepgram => transcribe_deepgram(&app, &file_path, &settings).await?,
-        SttProvider::LocalWhisper => transcribe_whisper(&app, &file_path, &settings).await?,
+        SttProvider::Deepgram => transcribe_deepgram(&app, &file_path, &settings).await.map_err(|e| {
+            tracing::error!(error = %e, provider = "deepgram", "Transcription failed");
+            e
+        })?,
+        SttProvider::LocalWhisper => transcribe_whisper(&app, &file_path, &settings).await.map_err(|e| {
+            tracing::error!(error = %e, provider = "local_whisper", "Transcription failed");
+            e
+        })?,
     };
 
     // Save to disk cache
@@ -193,13 +206,15 @@ async fn transcribe_deepgram(
         .await
         .map_err(|e| format!("Failed to read audio file: {}", e))?;
 
-    // Detect content type from extension
-    let content_type = if file_path.ends_with(".ogg") || file_path.ends_with(".oga") {
+    // Detect content type from file magic bytes (not extension — voice files may have wrong ext)
+    let content_type = if audio_data.starts_with(b"OggS") {
         "audio/ogg"
-    } else if file_path.ends_with(".mp3") {
+    } else if audio_data.len() >= 3 && &audio_data[..3] == b"ID3" {
         "audio/mpeg"
-    } else if file_path.ends_with(".wav") {
+    } else if audio_data.len() >= 4 && &audio_data[..4] == b"RIFF" {
         "audio/wav"
+    } else if audio_data.len() >= 2 && audio_data[0] == 0xFF && (audio_data[1] & 0xE0) == 0xE0 {
+        "audio/mpeg"
     } else {
         "audio/ogg" // Telegram voice messages default
     };

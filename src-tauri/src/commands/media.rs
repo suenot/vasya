@@ -195,16 +195,12 @@ fn media_extension(media: &grammers_client::types::Media) -> String {
         grammers_client::types::Media::Photo(_) => "jpg".to_string(),
         grammers_client::types::Media::Document(doc) => {
             doc.mime_type()
-                .map(|mime| {
-                    if mime.starts_with("video/") {
-                        "mp4"
-                    } else if mime.starts_with("audio/") {
-                        "mp3"
-                    } else if mime.starts_with("image/") {
-                        mime.split('/').nth(1).unwrap_or("dat")
-                    } else {
-                        "dat"
-                    }
+                .map(|mime| match mime {
+                    "audio/ogg" | "audio/opus" | "audio/ogg; codecs=opus" => "ogg",
+                    m if m.starts_with("video/") => "mp4",
+                    m if m.starts_with("audio/") => "mp3",
+                    m if m.starts_with("image/") => m.split('/').nth(1).unwrap_or("dat"),
+                    _ => "dat",
                 })
                 .unwrap_or("dat")
                 .to_string()
