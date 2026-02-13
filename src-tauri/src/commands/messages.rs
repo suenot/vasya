@@ -250,6 +250,7 @@ pub async fn send_media(
     file_name: String,
     mime_type: String,
     caption: Option<String>,
+    app: tauri::AppHandle,
     state: State<'_, Arc<RwLock<AppState>>>,
 ) -> Result<Message, String> {
     tracing::info!(
@@ -279,7 +280,7 @@ pub async fn send_media(
         .and_then(|e| e.to_str())
         .unwrap_or("bin");
     let tmp_path = std::env::temp_dir().join(format!("upload_{}.{}", uuid::Uuid::new_v4(), ext));
-    tokio::fs::write(&tmp_path, media_bytes)
+    tokio::fs::write(&tmp_path, &media_bytes)
         .await
         .map_err(|e| format!("Failed to write temp file: {}", e))?;
 
@@ -289,9 +290,6 @@ pub async fn send_media(
         .upload_file(&tmp_path)
         .await
         .map_err(|e| format!("Failed to upload file: {}", e))?;
-
-    // Clean up temp file
-    let _ = tokio::fs::remove_file(&tmp_path).await;
 
     // For images: let grammers auto-detect from extension → sends as inputMediaUploadedPhoto
     // For other files: set mime_type explicitly → sends as inputMediaUploadedDocument
@@ -310,6 +308,32 @@ pub async fn send_media(
 
     tracing::info!(msg_id = sent_message.id(), "Media sent");
 
+    // Save a local copy so the frontend can display it immediately (no re-download needed)
+    let local_file_path = save_sent_media_locally(&app, chat_id, sent_message.id(), ext, &tmp_path).await;
+
+    // Clean up temp file
+    let _ = tokio::fs::remove_file(&tmp_path).await;
+
+    // Build media info with local file path
+    let media = sent_message.media().map(|m| {
+        let media_type = classify_media_type(&m).to_string();
+        let (file_size, mime_type_val) = match &m {
+            Media::Document(doc) => (
+                Some(doc.size() as u64),
+                doc.mime_type().map(|s| s.to_string()),
+            ),
+            Media::Photo(_) => (None, Some("image/jpeg".to_string())),
+            _ => (None, None),
+        };
+        vec![MediaInfo {
+            media_type,
+            file_path: local_file_path.clone(),
+            file_name: None,
+            file_size,
+            mime_type: mime_type_val,
+        }]
+    });
+
     Ok(Message {
         id: sent_message.id(),
         chat_id,
@@ -319,6 +343,32 @@ pub async fn send_media(
         text: if sent_message.text().is_empty() { None } else { Some(sent_message.text().to_string()) },
         date: sent_message.date().timestamp(),
         is_outgoing: true,
-        media: extract_media_info(&sent_message),
+        media,
     })
+}
+
+/// Save sent media to the local media directory so it can be displayed without re-downloading.
+async fn save_sent_media_locally(
+    app: &tauri::AppHandle,
+    chat_id: i64,
+    message_id: i32,
+    ext: &str,
+    tmp_path: &std::path::Path,
+) -> Option<String> {
+    use tauri::Manager;
+    let app_data_dir = match app.path().app_data_dir() {
+        Ok(d) => d,
+        Err(_) => return None,
+    };
+    let media_dir = app_data_dir.join("media").join(format!("chat_{}", chat_id.unsigned_abs()));
+    if tokio::fs::create_dir_all(&media_dir).await.is_err() {
+        return None;
+    }
+    let timestamp = chrono::Utc::now().timestamp();
+    let dest = media_dir.join(format!("media_{}_{}.{}", message_id, timestamp, ext));
+    if tokio::fs::copy(tmp_path, &dest).await.is_ok() {
+        Some(dest.to_string_lossy().to_string())
+    } else {
+        None
+    }
 }
