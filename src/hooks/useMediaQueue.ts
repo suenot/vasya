@@ -18,6 +18,8 @@ class MediaDownloadQueue {
   private completed = 0;
   private failed = 0;
   private seenKeys = new Set<string>();
+  private resultCache = new Map<string, any>();
+  private pendingPromises = new Map<string, Promise<any>>();
 
   /** Move all queued items for chatId to front of queue */
   prioritize(chatId: number) {
@@ -42,16 +44,27 @@ class MediaDownloadQueue {
 
   enqueue(item: Omit<QueueItem, 'resolve' | 'reject'>): Promise<any> {
     const key = `${item.chatId}_${item.messageId}`;
+    // Return cached result if a previous download succeeded
+    if (this.resultCache.has(key)) {
+      return Promise.resolve(this.resultCache.get(key));
+    }
+    // Return in-progress promise if download is underway (component remounted)
+    if (this.pendingPromises.has(key)) {
+      return this.pendingPromises.get(key)!;
+    }
     if (this.seenKeys.has(key)) {
       return Promise.resolve(null);
     }
     this.seenKeys.add(key);
 
-    return new Promise((resolve, reject) => {
+    const promise = new Promise((resolve, reject) => {
       this.queue.push({ ...item, resolve, reject });
       this.syncStore();
       this.processNext();
     });
+    this.pendingPromises.set(key, promise);
+    promise.finally(() => this.pendingPromises.delete(key));
+    return promise;
   }
 
   getStats() {
@@ -77,8 +90,14 @@ class MediaDownloadQueue {
         messageId: item.messageId,
       });
       this.completed++;
+      // Cache successful result so remounted components get it instantly
+      const key = `${item.chatId}_${item.messageId}`;
+      if (result) this.resultCache.set(key, result);
       item.resolve(result);
     } catch (error) {
+      // Allow retry on failure
+      const key = `${item.chatId}_${item.messageId}`;
+      this.seenKeys.delete(key);
       this.failed++;
       item.reject(error);
     } finally {
