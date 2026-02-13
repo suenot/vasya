@@ -35,17 +35,22 @@ impl Default for AppState {
 
 /// Load .env file — checks multiple locations:
 /// 1. Next to the executable (for bundled .app)
-/// 2. Parent of executable dir (for cargo run from src-tauri/)
-/// 3. Current working directory
-/// 4. Parent of cwd (for tauri dev)
+/// 2. macOS .app Resources dir (Tauri bundled resources)
+/// 3. Parent of executable dir (for cargo run from src-tauri/)
+/// 4. Current working directory
+/// 5. Parent of cwd (for tauri dev)
 fn load_env() {
     let candidates: Vec<std::path::PathBuf> = {
         let mut v = Vec::new();
-        // Next to the binary (works inside .app bundle)
         if let Ok(exe) = std::env::current_exe() {
             if let Some(dir) = exe.parent() {
+                // Next to the binary (Contents/MacOS/.env)
                 v.push(dir.join(".env"));
-                // macOS .app: Contents/MacOS/../../../.env (next to .app)
+                // macOS .app Resources dir (Contents/Resources/.env — Tauri bundled resources)
+                if let Some(contents) = dir.parent() {
+                    v.push(contents.join("Resources").join(".env"));
+                }
+                // Next to .app bundle (Contents/MacOS/../../../.env)
                 if let Some(grandparent) = dir.parent().and_then(|p| p.parent()).and_then(|p| p.parent()) {
                     v.push(grandparent.join(".env"));
                 }

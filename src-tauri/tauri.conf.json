@@ -39,6 +39,9 @@
     ],
     "externalBin": [
       "stt-sidecar/target/release/stt-sidecar"
+    ],
+    "resources": [
+      "../.env"
     ]
   }
 }
