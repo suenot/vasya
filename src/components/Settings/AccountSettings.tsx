@@ -4,13 +4,14 @@ import { useAccountsStore } from '../../store/accountsStore';
 import { useThemeStore, ThemeSetting } from '../../store/themeStore';
 import { useDownloadStore } from '../../store/downloadStore';
 import { useSttStore, SttProvider } from '../../store/sttStore';
+import { useHotkeysStore } from '../../store/hotkeysStore';
 import './AccountSettings.css';
 
 interface AccountSettingsProps {
   onClose: () => void;
 }
 
-type SettingsSection = 'general' | 'privacy' | 'data' | 'downloads' | 'stt' | 'folders' | 'devices' | 'language';
+type SettingsSection = 'general' | 'privacy' | 'data' | 'downloads' | 'stt' | 'hotkeys' | 'folders' | 'devices' | 'language';
 
 export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
   const { getActiveAccount } = useAccountsStore();
@@ -28,6 +29,9 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
   const downloadModel = useSttStore((s) => s.downloadModel);
   const [downloadingModel, setDownloadingModel] = useState<string | null>(null);
 
+  const { hotkeys, updateHotkey, resetDefaults } = useHotkeysStore();
+  const [listeningForKey, setListeningForKey] = useState<string | null>(null);
+
   useEffect(() => {
     if (activeSection === 'stt') {
       loadSttSettings();
@@ -36,23 +40,48 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
   }, [activeSection, loadSttSettings, loadWhisperModels]);
   const activeAccount = getActiveAccount();
 
+  useEffect(() => {
+    if (!listeningForKey) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const keys: string[] = [];
+      if (e.metaKey) keys.push('Meta');
+      if (e.ctrlKey) keys.push('Ctrl');
+      if (e.altKey) keys.push('Alt');
+      if (e.shiftKey) keys.push('Shift');
+
+      // Don't capture modifiers alone
+      if (['Meta', 'Control', 'Alt', 'Shift'].includes(e.key)) return;
+
+      keys.push(e.key);
+      updateHotkey(listeningForKey, keys);
+      setListeningForKey(null);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [listeningForKey, updateHotkey]);
+
   const handleThemeChange = (newTheme: ThemeSetting) => {
     setThemeSetting(newTheme);
   };
 
   const renderGeneralSettings = () => (
     <div className="settings-content">
-      <h2>Основные настройки</h2>
+      <h2>General Settings</h2>
 
-      {/* Тема */}
+      {/* Theme */}
       <div className="settings-group">
-        <h3>Оформление</h3>
+        <h3>Appearance</h3>
 
         <div className="settings-item">
           <div className="settings-item-label">
-            <div className="settings-item-title">Тема</div>
+            <div className="settings-item-title">Theme</div>
             <div className="settings-item-description">
-              {themeSetting === 'system' ? 'Как в системе' : themeSetting === 'light' ? 'Светлая' : 'Тёмная'}
+              {themeSetting === 'system' ? 'System Default' : themeSetting === 'light' ? 'Light' : 'Dark'}
             </div>
           </div>
         </div>
@@ -70,7 +99,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
               <div className="theme-preview-half light"></div>
               <div className="theme-preview-half dark"></div>
             </div>
-            <span>Как в системе</span>
+            <span>System Default</span>
           </label>
 
           <label className={`theme-option ${themeSetting === 'light' ? 'active' : ''}`}>
@@ -82,7 +111,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
               onChange={(e) => handleThemeChange(e.target.value as ThemeSetting)}
             />
             <div className="theme-preview light"></div>
-            <span>Светлая</span>
+            <span>Light</span>
           </label>
 
           <label className={`theme-option ${themeSetting === 'dark' ? 'active' : ''}`}>
@@ -94,18 +123,18 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
               onChange={(e) => handleThemeChange(e.target.value as ThemeSetting)}
             />
             <div className="theme-preview dark"></div>
-            <span>Тёмная</span>
+            <span>Dark</span>
           </label>
         </div>
       </div>
 
-      {/* Другие настройки */}
+      {/* Other Settings */}
       <div className="settings-group">
-        <h3>Интерфейс</h3>
+        <h3>Interface</h3>
 
         <div className="settings-item clickable">
           <div className="settings-item-label">
-            <div className="settings-item-title">Масштаб интерфейса</div>
+            <div className="settings-item-title">Interface Scale</div>
             <div className="settings-item-description">100%</div>
           </div>
           <div className="settings-item-arrow">›</div>
@@ -113,19 +142,19 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
 
         <div className="settings-item clickable">
           <div className="settings-item-label">
-            <div className="settings-item-title">Размер текста в сообщениях</div>
-            <div className="settings-item-description">Средний</div>
+            <div className="settings-item-title">Message Text Size</div>
+            <div className="settings-item-description">Medium</div>
           </div>
           <div className="settings-item-arrow">›</div>
         </div>
       </div>
 
       <div className="settings-group">
-        <h3>Уведомления</h3>
+        <h3>Notifications</h3>
 
         <div className="settings-item toggle">
           <div className="settings-item-label">
-            <div className="settings-item-title">Звук уведомлений</div>
+            <div className="settings-item-title">Notification Sound</div>
           </div>
           <label className="toggle-switch">
             <input type="checkbox" defaultChecked />
@@ -135,7 +164,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
 
         <div className="settings-item toggle">
           <div className="settings-item-label">
-            <div className="settings-item-title">Предпросмотр в уведомлениях</div>
+            <div className="settings-item-title">Message Preview</div>
           </div>
           <label className="toggle-switch">
             <input type="checkbox" defaultChecked />
@@ -148,49 +177,49 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
 
   const renderPrivacySettings = () => (
     <div className="settings-content">
-      <h2>Конфиденциальность</h2>
+      <h2>Privacy and Security</h2>
 
       <div className="settings-group">
-        <h3>Приватность</h3>
+        <h3>Privacy</h3>
 
         <div className="settings-item clickable">
           <div className="settings-item-label">
-            <div className="settings-item-title">Номер телефона</div>
-            <div className="settings-item-description">Мои контакты</div>
+            <div className="settings-item-title">Phone Number</div>
+            <div className="settings-item-description">My Contacts</div>
           </div>
           <div className="settings-item-arrow">›</div>
         </div>
 
         <div className="settings-item clickable">
           <div className="settings-item-label">
-            <div className="settings-item-title">Последний раз в сети</div>
-            <div className="settings-item-description">Все</div>
+            <div className="settings-item-title">Last Seen & Online</div>
+            <div className="settings-item-description">Everybody</div>
           </div>
           <div className="settings-item-arrow">›</div>
         </div>
 
         <div className="settings-item clickable">
           <div className="settings-item-label">
-            <div className="settings-item-title">Фото профиля</div>
-            <div className="settings-item-description">Все</div>
+            <div className="settings-item-title">Profile Photo</div>
+            <div className="settings-item-description">Everybody</div>
           </div>
           <div className="settings-item-arrow">›</div>
         </div>
       </div>
 
       <div className="settings-group">
-        <h3>Безопасность</h3>
+        <h3>Security</h3>
 
         <div className="settings-item clickable">
           <div className="settings-item-label">
-            <div className="settings-item-title">Активные сеансы</div>
+            <div className="settings-item-title">Active Sessions</div>
           </div>
           <div className="settings-item-arrow">›</div>
         </div>
 
         <div className="settings-item toggle">
           <div className="settings-item-label">
-            <div className="settings-item-title">Двухэтапная аутентификация</div>
+            <div className="settings-item-title">Two-Step Verification</div>
           </div>
           <label className="toggle-switch">
             <input type="checkbox" />
@@ -203,33 +232,33 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
 
   const renderDataSettings = () => (
     <div className="settings-content">
-      <h2>Данные и память</h2>
+      <h2>Data and Storage</h2>
 
       <div className="settings-group">
-        <h3>Использование памяти</h3>
+        <h3>Storage Usage</h3>
 
         <div className="settings-item clickable">
           <div className="settings-item-label">
-            <div className="settings-item-title">Управление памятью</div>
-            <div className="settings-item-description">Очистить кэш</div>
+            <div className="settings-item-title">Manage Storage</div>
+            <div className="settings-item-description">Clear Cache</div>
           </div>
           <div className="settings-item-arrow">›</div>
         </div>
 
         <div className="settings-item clickable">
           <div className="settings-item-label">
-            <div className="settings-item-title">Использование сети</div>
+            <div className="settings-item-title">Network Usage</div>
           </div>
           <div className="settings-item-arrow">›</div>
         </div>
       </div>
 
       <div className="settings-group">
-        <h3>Автоматическая загрузка медиа</h3>
+        <h3>Automatic Media Download</h3>
 
         <div className="settings-item toggle">
           <div className="settings-item-label">
-            <div className="settings-item-title">Фото</div>
+            <div className="settings-item-title">Photos</div>
           </div>
           <label className="toggle-switch">
             <input type="checkbox" defaultChecked />
@@ -239,7 +268,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
 
         <div className="settings-item toggle">
           <div className="settings-item-label">
-            <div className="settings-item-title">Видео</div>
+            <div className="settings-item-title">Videos</div>
           </div>
           <label className="toggle-switch">
             <input type="checkbox" />
@@ -249,7 +278,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
 
         <div className="settings-item toggle">
           <div className="settings-item-label">
-            <div className="settings-item-title">Файлы</div>
+            <div className="settings-item-title">Files</div>
           </div>
           <label className="toggle-switch">
             <input type="checkbox" />
@@ -433,8 +462,8 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
                   <div className="stt-model-size">
                     {model.downloaded && model.size ? formatSize(model.size) : (
                       model.name === 'tiny' ? '~75 MB' :
-                      model.name === 'base' ? '~142 MB' :
-                      '~466 MB'
+                        model.name === 'base' ? '~142 MB' :
+                          '~466 MB'
                     )}
                   </div>
                 </div>
@@ -469,6 +498,38 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
     </div>
   );
 
+  const renderHotkeysSettings = () => (
+    <div className="settings-content">
+      <div className="settings-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2>Hotkeys</h2>
+        <button className="text-button" onClick={resetDefaults}>Reset to Default</button>
+      </div>
+
+      <div className="settings-group">
+        <h3>Application Shortcuts</h3>
+        {hotkeys.map((hotkey) => (
+          <div
+            key={hotkey.id}
+            className={`settings-item clickable ${listeningForKey === hotkey.id ? 'active-listening' : ''}`}
+            onClick={() => setListeningForKey(listeningForKey === hotkey.id ? null : hotkey.id)}
+          >
+            <div className="settings-item-label">
+              <div className="settings-item-title">{hotkey.label}</div>
+              <div className="settings-item-description">{hotkey.description}</div>
+            </div>
+            <div className="settings-item-value hotkey-badge">
+              {listeningForKey === hotkey.id ? (
+                <span className="listening-text">Press keys...</span>
+              ) : (
+                hotkey.keys.map(k => k === 'Meta' ? '⌘' : k).join(' + ')
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeSection) {
       case 'general':
@@ -481,25 +542,27 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
         return renderDownloadsSettings();
       case 'stt':
         return renderSttSettings();
+      case 'hotkeys':
+        return renderHotkeysSettings();
       case 'folders':
         return (
           <div className="settings-content">
-            <h2>Папки</h2>
-            <p className="settings-placeholder">Функция в разработке</p>
+            <h2>Chat Folders</h2>
+            <p className="settings-placeholder">Feature in development</p>
           </div>
         );
       case 'devices':
         return (
           <div className="settings-content">
-            <h2>Устройства</h2>
-            <p className="settings-placeholder">Функция в разработке</p>
+            <h2>Devices</h2>
+            <p className="settings-placeholder">Feature in development</p>
           </div>
         );
       case 'language':
         return (
           <div className="settings-content">
-            <h2>Язык</h2>
-            <p className="settings-placeholder">Функция в разработке</p>
+            <h2>Language</h2>
+            <p className="settings-placeholder">Feature in development</p>
           </div>
         );
       default:
@@ -511,15 +574,15 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
     <>
       <div className="account-settings-overlay" onClick={onClose}>
         <div className="account-settings" onClick={(e) => e.stopPropagation()}>
-          {/* Боковая панель с разделами */}
+          {/* Sidebar */}
           <aside className="settings-sidebar">
             <div className="settings-sidebar-header">
-              <button className="icon-button" onClick={onClose} title="Закрыть">
+              <button className="icon-button" onClick={onClose} title="Close">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M19 12H5M12 19l-7-7 7-7" />
                 </svg>
               </button>
-              <h2>Настройки</h2>
+              <h2>Settings</h2>
             </div>
 
             <div
@@ -532,7 +595,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
               </div>
               <div className="settings-profile-info">
                 <div className="settings-profile-name">
-                  {activeAccount?.userInfo?.first_name || 'Пользователь'}
+                  {activeAccount?.userInfo?.first_name || 'User'}
                 </div>
                 <div className="settings-profile-phone">{activeAccount?.userInfo?.phone || ''}</div>
               </div>
@@ -544,21 +607,21 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
                 onClick={() => setActiveSection('general')}
               >
                 <span className="settings-nav-icon">⚙️</span>
-                Основные
+                General
               </button>
               <button
                 className={`settings-nav-item ${activeSection === 'privacy' ? 'active' : ''}`}
                 onClick={() => setActiveSection('privacy')}
               >
                 <span className="settings-nav-icon">🔒</span>
-                Конфиденциальность
+                Privacy & Security
               </button>
               <button
                 className={`settings-nav-item ${activeSection === 'data' ? 'active' : ''}`}
                 onClick={() => setActiveSection('data')}
               >
                 <span className="settings-nav-icon">💾</span>
-                Данные и память
+                Data & Storage
               </button>
               <button
                 className={`settings-nav-item ${activeSection === 'downloads' ? 'active' : ''}`}
@@ -589,30 +652,37 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
                 Voice (STT)
               </button>
               <button
+                className={`settings-nav-item ${activeSection === 'hotkeys' ? 'active' : ''}`}
+                onClick={() => setActiveSection('hotkeys')}
+              >
+                <span className="settings-nav-icon">⌨️</span>
+                Hotkeys
+              </button>
+              <button
                 className={`settings-nav-item ${activeSection === 'folders' ? 'active' : ''}`}
                 onClick={() => setActiveSection('folders')}
               >
                 <span className="settings-nav-icon">📁</span>
-                Папки
+                Chat Folders
               </button>
               <button
                 className={`settings-nav-item ${activeSection === 'devices' ? 'active' : ''}`}
                 onClick={() => setActiveSection('devices')}
               >
                 <span className="settings-nav-icon">📱</span>
-                Устройства
+                Devices
               </button>
               <button
                 className={`settings-nav-item ${activeSection === 'language' ? 'active' : ''}`}
                 onClick={() => setActiveSection('language')}
               >
                 <span className="settings-nav-icon">🌐</span>
-                Язык
+                Language
               </button>
             </nav>
           </aside>
 
-          {/* Основной контент */}
+          {/* Main Content */}
           <main className="settings-main">
             <button className="settings-close" onClick={onClose}>
               ✕
@@ -622,7 +692,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
         </div>
       </div>
 
-      {/* Модальное окно редактирования профиля */}
+      {/* Profile Edit Modal */}
       {showProfileEdit && <ProfileSettings onClose={() => setShowProfileEdit(false)} />}
     </>
   );

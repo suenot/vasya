@@ -10,6 +10,7 @@ import { useChatsStore } from '../../store/chatsStore';
 import { useConnectionStore } from '../../store/connectionStore';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useTauriEvent } from '../../hooks/useTauriEvent';
+import { useHotkeysStore } from '../../store/hotkeysStore';
 import { Chat } from '../../types/telegram';
 import './MainLayout.css';
 
@@ -207,6 +208,96 @@ export const MainLayout = () => {
     // Clear highlight after animation
     setTimeout(() => setHighlightedMessageId(null), 2000);
   }, []);
+
+  // Global Hotkeys Listener
+  const hotkeys = useHotkeysStore((s) => s.hotkeys);
+
+  useEffect(() => {
+    const handleGlobalKeydown = (e: KeyboardEvent) => {
+      // Helper: Check if hotkey matches
+      const isMatch = (id: string): boolean => {
+        const config = hotkeys.find((h) => h.id === id);
+        if (!config) return false;
+
+        const keys = config.keys;
+        const modifiers = {
+          Meta: e.metaKey,
+          Ctrl: e.ctrlKey,
+          Alt: e.altKey,
+          Shift: e.shiftKey,
+        };
+
+        // Check if all modifier keys in config are pressed (and only those?)
+        // Simplified check: Just ensure every key in 'keys' is present in event
+        const configModifiers = keys.filter(k => ['Meta', 'Ctrl', 'Alt', 'Shift'].includes(k));
+        const configNonModifiers = keys.filter(k => !['Meta', 'Ctrl', 'Alt', 'Shift'].includes(k));
+
+        // Check modifiers
+        // For strict matching: all event modifiers must match config modifiers exactly?
+        // Or just allow extra modifiers? Usually strict is better to allow other combos.
+
+        // Strict modifier check:
+        if (configModifiers.includes('Meta') !== modifiers.Meta) return false;
+        if (configModifiers.includes('Ctrl') !== modifiers.Ctrl) return false;
+        if (configModifiers.includes('Alt') !== modifiers.Alt) return false;
+        if (configModifiers.includes('Shift') !== modifiers.Shift) return false;
+
+        // Check non-modifier key
+        // e.key might be 'ArrowDown', 'k', ',' etc.
+        // Hotkey config might store 'ArrowDown', 'k', ','
+        // Case insensitive for letters usually? e.key is case sensitive ('K' vs 'k')
+        if (configNonModifiers.length === 0) return false; // Modifier only? unlikley for these actions
+
+        const targetKey = configNonModifiers[0];
+        if (targetKey.toLowerCase() !== e.key.toLowerCase()) return false;
+
+        return true;
+      };
+
+      if (isMatch('focus_search')) {
+        e.preventDefault();
+        setIsSearchExpanded(true);
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      } else if (isMatch('open_settings')) {
+        e.preventDefault();
+        setShowSettings((prev) => !prev);
+      } else if (isMatch('close_chat')) {
+        // Close modal first
+        if (showSettings) {
+          e.preventDefault();
+          setShowSettings(false);
+          return;
+        }
+        if (showChatInfo) {
+          e.preventDefault();
+          setShowChatInfo(false);
+          return;
+        }
+        if (selectedChatId) {
+          e.preventDefault();
+          setSelectedChatId(null);
+        }
+      } else if (isMatch('next_chat')) {
+        e.preventDefault();
+        // Select next chat in filtered list
+        if (filteredChats.length > 0) {
+          const idx = selectedChatId ? filteredChats.findIndex(c => c.id === selectedChatId) : -1;
+          const nextIdx = (idx + 1) % filteredChats.length;
+          handleChatClick(filteredChats[nextIdx].id);
+        }
+      } else if (isMatch('prev_chat')) {
+        e.preventDefault();
+        if (filteredChats.length > 0) {
+          const idx = selectedChatId ? filteredChats.findIndex(c => c.id === selectedChatId) : -1;
+          const prevIdx = idx <= 0 ? filteredChats.length - 1 : idx - 1;
+          handleChatClick(filteredChats[prevIdx].id);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeydown);
+    return () => window.removeEventListener('keydown', handleGlobalKeydown);
+  }, [hotkeys, filteredChats, selectedChatId, showSettings, showChatInfo, handleChatClick]);
 
   return (
     <div className={`main-layout ${selectedChatId ? 'chat-open' : ''}`}>
