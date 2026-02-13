@@ -357,10 +357,10 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
 
   const renderSttSettings = () => (
     <div className="settings-content">
-      <h2>Распознавание голоса (STT)</h2>
+      <h2>Voice Recognition (STT)</h2>
 
       <div className="settings-group">
-        <h3>Провайдер</h3>
+        <h3>Provider</h3>
 
         <div className="stt-provider-options">
           <label className={`stt-provider-option ${sttSettings.provider === 'deepgram' ? 'active' : ''}`}>
@@ -372,9 +372,9 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
               onChange={() => saveSttSettings({ provider: 'deepgram' as SttProvider })}
             />
             <div className="stt-provider-info">
-              <div className="stt-provider-name">Deepgram (облако)</div>
+              <div className="stt-provider-name">Deepgram (Cloud)</div>
               <div className="stt-provider-desc">
-                Быстро и качественно. Требуется интернет. API-ключ зашит в приложение.
+                Fast and accurate. Requires internet. API key embedded in the app.
               </div>
             </div>
           </label>
@@ -388,12 +388,12 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
               onChange={() => saveSttSettings({ provider: 'local_whisper' as SttProvider })}
             />
             <div className="stt-provider-info">
-              <div className="stt-provider-name">Whisper (локально)</div>
+              <div className="stt-provider-name">Whisper (Local)</div>
               <div className="stt-provider-desc">
-                Полностью офлайн. Приватно. Требуется скачать модель.
+                Fully offline. Private. Requires model download.
               </div>
               <div className="stt-provider-warning">
-                ~1 ГБ ОЗУ при использовании (для телефонов может быть критично)
+                ~1 GB RAM when in use (may be critical for phones)
               </div>
             </div>
           </label>
@@ -401,25 +401,25 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
       </div>
 
       <div className="settings-group">
-        <h3>Язык распознавания</h3>
+        <h3>Recognition Language</h3>
         <select
           className="stt-language-select"
           value={sttSettings.language}
           onChange={(e) => saveSttSettings({ language: e.target.value })}
         >
-          <option value="ru">Русский</option>
+          <option value="ru">Russian</option>
           <option value="en">English</option>
-          <option value="uk">Українська</option>
-          <option value="de">Deutsch</option>
-          <option value="fr">Fran&ccedil;ais</option>
-          <option value="es">Espa&ntilde;ol</option>
-          <option value="multi">Авто (мультиязык)</option>
+          <option value="uk">Ukrainian</option>
+          <option value="de">German</option>
+          <option value="fr">French</option>
+          <option value="es">Spanish</option>
+          <option value="multi">Auto (multilingual)</option>
         </select>
       </div>
 
       {sttSettings.provider === 'local_whisper' && (
         <div className="settings-group">
-          <h3>Модели Whisper</h3>
+          <h3>Whisper Models</h3>
           <div className="stt-models-list">
             {whisperModels.map((model) => (
               <div key={model.name} className="stt-model-item">
@@ -427,7 +427,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
                   <div className="stt-model-name">
                     {model.name}
                     {sttSettings.whisper_model === model.name && (
-                      <span className="stt-model-active"> (активна)</span>
+                      <span className="stt-model-active"> (active)</span>
                     )}
                   </div>
                   <div className="stt-model-size">
@@ -441,13 +441,13 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
                 <div className="stt-model-actions">
                   {model.downloaded ? (
                     <>
-                      <span className="stt-model-downloaded">Скачана</span>
+                      <span className="stt-model-downloaded">Downloaded</span>
                       {sttSettings.whisper_model !== model.name && (
                         <button
                           className="stt-model-select-btn"
                           onClick={() => saveSttSettings({ whisper_model: model.name })}
                         >
-                          Выбрать
+                          Select
                         </button>
                       )}
                     </>
@@ -457,7 +457,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
                       disabled={sttLoading || downloadingModel !== null}
                       onClick={() => handleDownloadModel(model.name)}
                     >
-                      {downloadingModel === model.name ? 'Загрузка...' : 'Скачать'}
+                      {downloadingModel === model.name ? 'Downloading...' : 'Download'}
                     </button>
                   )}
                 </div>
@@ -586,7 +586,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
                     <line x1="8" y1="23" x2="16" y2="23" />
                   </svg>
                 </span>
-                Голос (STT)
+                Voice (STT)
               </button>
               <button
                 className={`settings-nav-item ${activeSection === 'folders' ? 'active' : ''}`}

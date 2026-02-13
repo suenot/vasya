@@ -1,6 +1,7 @@
 .main-layout {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   overflow: hidden;
   background-color: var(--bg-primary);
@@ -798,6 +799,93 @@
   color: var(--text-primary);
   font-weight: 500;
 }
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    min-width: 100%;
+    border-right: none;
+  }
+
+  .content {
+    display: none;
+    width: 100%;
+    position: fixed;
+    /* Fix content to cover screen */
+    top: 0;
+    left: 0;
+    height: 100dvh;
+    z-index: 20;
+    /* Above sidebar */
+  }
+
+  /* When chat is open, hide sidebar, show content */
+  .main-layout.chat-open .sidebar {
+    display: none;
+  }
+
+  .main-layout.chat-open .content {
+    display: flex;
+  }
+
+  /* Adjust chat info panel for mobile */
+  .chat-info-panel {
+    width: 100%;
+    z-index: 30;
+  }
+
+  /* Safe area insets for mobile */
+  .sidebar-header {
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
+
+  .content-header {
+    padding-top: env(safe-area-inset-top);
+    height: calc(56px + env(safe-area-inset-top));
+    align-items: flex-end;
+    /* Align bottom to keep vertical center with padding */
+    padding-bottom: 10px;
+    /* Adjust as needed */
+  }
+
+  /* Ensure back button is visible */
+  .back-button {
+    display: flex !important;
+    margin-right: 8px;
+  }
+
+  /* Larger touch targets */
+  .icon-button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .sidebar-header-top {
+    height: 56px;
+    /* Increase header height to accommodate larger buttons */
+  }
+}
+
+/* Back button defaults to hidden on desktop */
+.back-button {
+  display: none;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.back-button:hover {
+  background: var(--sidebar-hover);
+}
+
 
 /* Confirm Dialog */
 .confirm-dialog-overlay {

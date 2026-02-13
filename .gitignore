@@ -27,3 +27,10 @@ src-tauri/target/
 # OS
 .DS_Store
 Thumbs.db
+
+# Android
+src-tauri/gen/
+*.apk
+*.aab
+*.keystore
+local.properties

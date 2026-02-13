@@ -57,7 +57,7 @@ const VoiceWithTranscription = ({
       <audio src={fileSrc} controls style={{ width: '100%' }} />
       {fileName && <div className="file-name">{fileName}</div>}
       {isVoice && isTranscribing && (
-        <div className="voice-transcription-loading">Распознавание...</div>
+        <div className="voice-transcription-loading">Transcribing...</div>
       )}
       {isVoice && text && (
         <div className="voice-transcription">{text}</div>

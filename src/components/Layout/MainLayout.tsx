@@ -209,7 +209,7 @@ export const MainLayout = () => {
   }, []);
 
   return (
-    <div className="main-layout">
+    <div className={`main-layout ${selectedChatId ? 'chat-open' : ''}`}>
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className={`sidebar-header-top ${isSearchExpanded ? 'search-active' : ''}`}>
@@ -280,7 +280,14 @@ export const MainLayout = () => {
 
       <main className="content">
         <div className="content-bg" />
-        <ChatHeader chat={selectedChat} accountId={activeAccount?.id} onScrollToMessage={handleScrollToMessage} onShowInfo={() => setShowChatInfo(true)} onDeleteChat={() => setSelectedChatId(null)} />
+        <ChatHeader
+          chat={selectedChat}
+          accountId={activeAccount?.id}
+          onScrollToMessage={handleScrollToMessage}
+          onShowInfo={() => setShowChatInfo(true)}
+          onDeleteChat={() => setSelectedChatId(null)}
+          onBack={() => setSelectedChatId(null)}
+        />
 
         <div className="messages-area">
           {selectedChat && activeAccount ? (
