@@ -3,6 +3,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { useMediaQueue } from '../../hooks/useMediaQueue';
 import { useSttStore } from '../../store/sttStore';
 import { MediaInfo } from '../../types/telegram';
+import { VoiceMessage } from './VoiceMessage';
 import './MediaAttachment.css';
 
 interface MediaAttachmentProps {
@@ -22,67 +23,7 @@ const formatFileSize = (bytes: number): string => {
 // Types that auto-download when visible
 const AUTO_DOWNLOAD_TYPES = new Set(['photo', 'sticker', 'voice']);
 
-/** Auto-transcribe voice messages after download */
-const VoiceWithTranscription = ({
-  fileSrc,
-  filePath,
-  fileName,
-  chatId,
-  messageId,
-  isVoice,
-}: {
-  fileSrc: string;
-  filePath: string;
-  fileName?: string | null;
-  chatId: number;
-  messageId: number;
-  isVoice: boolean;
-}) => {
-  const transcriptions = useSttStore((s) => s.transcriptions);
-  const transcribing = useSttStore((s) => s.transcribing);
-  const transcribe = useSttStore((s) => s.transcribe);
 
-  const key = `${chatId}_${messageId}`;
-  const text = transcriptions[key];
-  const isTranscribing = transcribing.has(key);
-  const attemptedRef = useRef(false);
-
-  useEffect(() => {
-    if (!isVoice) {
-      console.log('[STT] Not a voice message, skipping');
-      return;
-    }
-    if (text !== undefined) {
-      console.log('[STT] Transcription already exists:', text.substring(0, 50));
-      return;
-    }
-    if (isTranscribing) {
-      console.log('[STT] Already transcribing...');
-      return;
-    }
-    if (attemptedRef.current) {
-      console.log('[STT] Already attempted transcription');
-      return;
-    }
-
-    console.log('[STT] Starting transcription for:', { chatId, messageId, filePath });
-    attemptedRef.current = true;
-    transcribe(chatId, messageId, filePath);
-  }, [isVoice, text, isTranscribing, chatId, messageId, filePath, transcribe]);
-
-  return (
-    <div className="media-audio">
-      <audio src={fileSrc} controls style={{ width: '100%' }} />
-      {fileName && <div className="file-name">{fileName}</div>}
-      {isVoice && isTranscribing && (
-        <div className="voice-transcription-loading">Transcribing...</div>
-      )}
-      {isVoice && text && (
-        <div className="voice-transcription">{text}</div>
-      )}
-    </div>
-  );
-};
 
 export const MediaAttachment = ({
   media,
@@ -180,19 +121,19 @@ export const MediaAttachment = ({
           <div className="media-download-prompt">
             <div className="media-download-icon">
               {media.media_type === 'video' || media.media_type === 'videonote' ? (
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
               ) : media.media_type === 'audio' ? (
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
               ) : (
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
               )}
             </div>
             <span className="media-download-label">
               {media.media_type === 'video' ? 'Video' :
-               media.media_type === 'videonote' ? 'Video message' :
-               media.media_type === 'audio' ? 'Audio' :
-               media.media_type === 'document' ? (media.file_name || 'Document') :
-               media.media_type}
+                media.media_type === 'videonote' ? 'Video message' :
+                  media.media_type === 'audio' ? 'Audio' :
+                    media.media_type === 'document' ? (media.file_name || 'Document') :
+                      media.media_type}
               {media.file_size ? ` (${formatFileSize(media.file_size)})` : ''}
             </span>
             <span className="media-download-tap">Tap to download</span>
@@ -234,17 +175,25 @@ export const MediaAttachment = ({
           <video src={fileSrc} controls style={{ maxWidth: '100%', borderRadius: '8px' }} />
         </div>
       );
+
     case 'audio':
     case 'voice':
+      if (media.media_type === 'voice') {
+        return (
+          <VoiceMessage
+            fileSrc={fileSrc}
+            filePath={currentMedia.file_path!}
+            chatId={chatId}
+            messageId={messageId}
+          />
+        );
+      }
+      // Fallback for regular audio files (music) -> keep using default or maybe enhance later
       return (
-        <VoiceWithTranscription
-          fileSrc={fileSrc}
-          filePath={currentMedia.file_path!}
-          fileName={currentMedia.file_name}
-          chatId={chatId}
-          messageId={messageId}
-          isVoice={media.media_type === 'voice'}
-        />
+        <div className="media-audio">
+          <audio src={fileSrc} controls style={{ width: '100%' }} />
+          {currentMedia.file_name && <div className="file-name">{currentMedia.file_name}</div>}
+        </div>
       );
     case 'document':
       return (
