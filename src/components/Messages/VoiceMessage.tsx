@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { useSttStore } from '../../store/sttStore';
 import './VoiceMessage.css';
 
@@ -8,16 +8,6 @@ interface VoiceMessageProps {
     chatId: number;
     messageId: number;
 }
-
-const WaveformBar = ({ index, active }: { index: number; active: boolean }) => (
-    <div
-        className={`waveform-bar${active ? ' active' : ''}`}
-        style={{
-            height: `${20 + Math.random() * 20}%`, // Random height for now
-            animationDelay: `${index * 0.05}s`,
-        }}
-    />
-);
 
 export const VoiceMessage = ({ fileSrc, filePath, chatId, messageId }: VoiceMessageProps) => {
     const transcriptions = useSttStore((s) => s.transcriptions);
