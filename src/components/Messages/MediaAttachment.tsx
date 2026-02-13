@@ -3,6 +3,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { useMediaQueue } from '../../hooks/useMediaQueue';
 import { MediaInfo } from '../../types/telegram';
 import { VoiceMessage } from './VoiceMessage';
+import { ImageViewer } from './ImageViewer';
 import './MediaAttachment.css';
 
 interface MediaAttachmentProps {
@@ -33,6 +34,7 @@ export const MediaAttachment = ({
 }: MediaAttachmentProps) => {
   const [loading, setLoading] = useState(false);
   const [loadedMedia, setLoadedMedia] = useState<MediaInfo | null>(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
   const downloadingRef = useRef(false);
   const downloadMedia = useMediaQueue();
 
@@ -164,7 +166,20 @@ export const MediaAttachment = ({
     case 'photo':
       return (
         <div className="media-photo">
-          <img src={fileSrc} alt={currentMedia.file_name || 'Photo'} loading="lazy" style={{ maxWidth: '100%', borderRadius: '8px' }} />
+          <img
+            src={fileSrc}
+            alt={currentMedia.file_name || 'Photo'}
+            loading="lazy"
+            style={{ maxWidth: '100%', borderRadius: '8px' }}
+            onClick={() => setViewerOpen(true)}
+          />
+          {viewerOpen && (
+            <ImageViewer
+              src={fileSrc}
+              alt={currentMedia.file_name || 'Photo'}
+              onClose={() => setViewerOpen(false)}
+            />
+          )}
         </div>
       );
     case 'video':

@@ -1,0 +1,56 @@
+/* Fullscreen image viewer overlay */
+.image-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: imageViewerFadeIn 0.2s ease;
+}
+
+.image-viewer-overlay.image-viewer-closing {
+  animation: imageViewerFadeOut 0.2s ease forwards;
+}
+
+.image-viewer-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10000;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  transition: background 0.15s;
+}
+
+.image-viewer-close:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.image-viewer-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  user-select: none;
+  transition: transform 0.1s ease;
+  border-radius: 4px;
+}
+
+@keyframes imageViewerFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes imageViewerFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
