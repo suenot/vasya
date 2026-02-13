@@ -5,7 +5,7 @@
 //! - Local Whisper (via sidecar binary) — runs whisper.cpp locally
 
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_shell::ShellExt;
 
 /// STT provider selection
@@ -262,6 +262,13 @@ async fn transcribe_deepgram(
 
 // --- Local Whisper provider (via sidecar) ---
 
+/// Progress event from sidecar, emitted as Tauri event
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct WhisperProgressEvent {
+    event: String,
+    detail: Option<String>,
+}
+
 async fn transcribe_whisper(
     app: &AppHandle,
     file_path: &str,
@@ -282,13 +289,13 @@ async fn transcribe_whisper(
         ));
     }
 
-    // Run sidecar binary
+    // Run sidecar binary with spawn() for real-time progress
     let sidecar_command = app
         .shell()
         .sidecar("stt-sidecar")
         .map_err(|e| format!("Whisper sidecar not found: {}. Local STT is not yet installed.", e))?;
 
-    let output = sidecar_command
+    let (mut rx, _child) = sidecar_command
         .args(&[
             "--model",
             model_path.to_str().unwrap_or(""),
@@ -297,16 +304,47 @@ async fn transcribe_whisper(
             "--language",
             &settings.language,
         ])
-        .output()
-        .await
-        .map_err(|e| format!("Failed to run whisper sidecar: {}", e))?;
+        .spawn()
+        .map_err(|e| format!("Failed to spawn whisper sidecar: {}", e))?;
 
-    if output.status.code() != Some(0) {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Whisper sidecar failed: {}", stderr));
+    let mut stdout_buf = String::new();
+    let mut stderr_buf = String::new();
+    let mut exit_code: Option<i32> = None;
+
+    // Process events from the sidecar
+    use tauri_plugin_shell::process::CommandEvent;
+
+    while let Some(event) = rx.recv().await {
+        match event {
+            CommandEvent::Stdout(data) => {
+                stdout_buf.push_str(&String::from_utf8_lossy(&data));
+            }
+            CommandEvent::Stderr(data) => {
+                let line = String::from_utf8_lossy(&data);
+                stderr_buf.push_str(&line);
+
+                // Try to parse each line as a JSON progress event
+                for part in line.lines() {
+                    let trimmed = part.trim();
+                    if trimmed.starts_with('{') {
+                        if let Ok(progress) = serde_json::from_str::<WhisperProgressEvent>(trimmed) {
+                            let _ = app.emit("whisper-progress", &progress);
+                            tracing::debug!(event = %progress.event, "Whisper progress");
+                        }
+                    }
+                }
+            }
+            CommandEvent::Terminated(payload) => {
+                exit_code = payload.code;
+                break;
+            }
+            _ => {}
+        }
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    if exit_code != Some(0) {
+        return Err(format!("Whisper sidecar failed: {}", stderr_buf));
+    }
 
     #[derive(Deserialize)]
     struct WhisperOutput {
@@ -314,8 +352,8 @@ async fn transcribe_whisper(
         language: Option<String>,
     }
 
-    let parsed: WhisperOutput = serde_json::from_str(&stdout)
-        .map_err(|e| format!("Failed to parse whisper output: {}", e))?;
+    let parsed: WhisperOutput = serde_json::from_str(stdout_buf.trim())
+        .map_err(|e| format!("Failed to parse whisper output: {}. Raw: {}", e, stdout_buf))?;
 
     Ok(TranscriptionResult {
         text: parsed.text,

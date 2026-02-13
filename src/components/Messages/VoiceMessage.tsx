@@ -1,5 +1,6 @@
 import { useRef, useState, useMemo } from 'react';
-import { useSttStore } from '../../store/sttStore';
+import { useSttStore, WhisperProgress } from '../../store/sttStore';
+import { useTauriEvent } from '../../hooks/useTauriEvent';
 import './VoiceMessage.css';
 
 interface VoiceMessageProps {
@@ -9,12 +10,25 @@ interface VoiceMessageProps {
     messageId: number;
 }
 
+const PROGRESS_LABELS: Record<string, string> = {
+    loading_model: 'Loading model...',
+    model_loaded: 'Model loaded',
+    converting_audio: 'Converting audio...',
+    ffmpeg_converting: 'Converting via ffmpeg...',
+    audio_ready: 'Audio ready',
+    transcribing: 'Transcribing...',
+    extracting_text: 'Extracting text...',
+    done: 'Done',
+};
+
 export const VoiceMessage = ({ fileSrc, filePath, chatId, messageId }: VoiceMessageProps) => {
     const transcriptions = useSttStore((s) => s.transcriptions);
     const transcribing = useSttStore((s) => s.transcribing);
     const errors = useSttStore((s) => s.errors);
     const transcribe = useSttStore((s) => s.transcribe);
     const clearError = useSttStore((s) => s.clearError);
+    const whisperProgress = useSttStore((s) => s.whisperProgress);
+    const setWhisperProgress = useSttStore((s) => s.setWhisperProgress);
 
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -25,6 +39,17 @@ export const VoiceMessage = ({ fileSrc, filePath, chatId, messageId }: VoiceMess
     const text = transcriptions[key];
     const error = errors[key];
     const isTranscribing = transcribing.has(key);
+
+    // Listen for whisper progress events from the backend
+    useTauriEvent<WhisperProgress>('whisper-progress', (payload) => {
+        if (isTranscribing) {
+            setWhisperProgress(payload);
+            if (payload.event === 'done') {
+                // Clear progress shortly after done
+                setTimeout(() => setWhisperProgress(null), 500);
+            }
+        }
+    });
 
     const formattedTime = useMemo(() => {
         const time = isPlaying || currentTime > 0 ? currentTime : duration;
@@ -51,6 +76,7 @@ export const VoiceMessage = ({ fileSrc, filePath, chatId, messageId }: VoiceMess
     const handleTranscribe = () => {
         if (text || isTranscribing) return;
         if (error) clearError(key);
+        setWhisperProgress(null);
         transcribe(chatId, messageId, filePath);
     };
 
@@ -73,6 +99,11 @@ export const VoiceMessage = ({ fileSrc, filePath, chatId, messageId }: VoiceMess
 
     // Determine active bars based on progress
     const activeBarsCount = duration > 0 ? Math.floor((currentTime / duration) * bars.length) : 0;
+
+    // Progress label for current step
+    const progressLabel = isTranscribing && whisperProgress
+        ? PROGRESS_LABELS[whisperProgress.event] || 'Processing...'
+        : null;
 
     return (
         <div className="voice-message">
@@ -125,7 +156,6 @@ export const VoiceMessage = ({ fileSrc, filePath, chatId, messageId }: VoiceMess
                         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                         <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                     </svg>
-                    {/* Alternatively use a Text icon like 'T' */}
                 </button>
             </div>
 
@@ -136,7 +166,7 @@ export const VoiceMessage = ({ fileSrc, filePath, chatId, messageId }: VoiceMess
                         <div className="loading-dot"></div>
                         <div className="loading-dot"></div>
                     </div>
-                    <span>Transcribing...</span>
+                    <span>{progressLabel || 'Transcribing...'}</span>
                 </div>
             )}
 

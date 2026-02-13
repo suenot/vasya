@@ -16,6 +16,21 @@ export interface WhisperModelInfo {
   size: number | null; // bytes
 }
 
+export type WhisperProgressStep =
+  | 'loading_model'
+  | 'model_loaded'
+  | 'converting_audio'
+  | 'ffmpeg_converting'
+  | 'audio_ready'
+  | 'transcribing'
+  | 'extracting_text'
+  | 'done';
+
+export interface WhisperProgress {
+  event: WhisperProgressStep;
+  detail?: string;
+}
+
 interface SttState {
   settings: SttSettings;
   loading: boolean;
@@ -24,6 +39,7 @@ interface SttState {
   transcriptions: Record<string, string>;
   transcribing: Set<string>;
   errors: Record<string, string>;
+  whisperProgress: WhisperProgress | null;
 
   loadSettings: () => Promise<void>;
   saveSettings: (settings: Partial<SttSettings>) => Promise<void>;
@@ -31,6 +47,7 @@ interface SttState {
   downloadModel: (modelName: string) => Promise<void>;
   transcribe: (chatId: number, messageId: number, filePath: string) => Promise<string | null>;
   clearError: (key: string) => void;
+  setWhisperProgress: (progress: WhisperProgress | null) => void;
 }
 
 const TRANSCRIBING_SET = new Set<string>();
@@ -47,6 +64,7 @@ export const useSttStore = create<SttState>((set, get) => ({
   transcriptions: {},
   transcribing: TRANSCRIBING_SET,
   errors: {},
+  whisperProgress: null,
 
   loadSettings: async () => {
     try {
@@ -145,5 +163,9 @@ export const useSttStore = create<SttState>((set, get) => ({
       const { [key]: _, ...rest } = state.errors;
       return { errors: rest };
     });
+  },
+
+  setWhisperProgress: (progress) => {
+    set({ whisperProgress: progress });
   },
 }));
