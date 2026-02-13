@@ -84,8 +84,8 @@ jobs:
       with:
         name: vasyapp-android
         path: |
-          src-tauri/gen/android/app/build/outputs/apk/debug/*.apk
-          src-tauri/gen/android/app/build/outputs/apk/release/*.apk
+          src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          src-tauri/gen/android/app/build/outputs/bundle/**/*.aab
         if-no-files-found: warn
 
     - name: Create Release
@@ -93,7 +93,7 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          src-tauri/gen/android/app/build/outputs/apk/debug/*.apk
-          src-tauri/gen/android/app/build/outputs/apk/release/*.apk
+          src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          src-tauri/gen/android/app/build/outputs/bundle/**/*.aab
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
