@@ -3,6 +3,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { useMediaQueue } from '../../hooks/useMediaQueue';
 import { useSttStore } from '../../store/sttStore';
 import { MediaInfo } from '../../types/telegram';
+import './MediaAttachment.css';
 
 interface MediaAttachmentProps {
   media: MediaInfo;
@@ -47,7 +48,24 @@ const VoiceWithTranscription = ({
   const attemptedRef = useRef(false);
 
   useEffect(() => {
-    if (!isVoice || text !== undefined || isTranscribing || attemptedRef.current) return;
+    if (!isVoice) {
+      console.log('[STT] Not a voice message, skipping');
+      return;
+    }
+    if (text !== undefined) {
+      console.log('[STT] Transcription already exists:', text.substring(0, 50));
+      return;
+    }
+    if (isTranscribing) {
+      console.log('[STT] Already transcribing...');
+      return;
+    }
+    if (attemptedRef.current) {
+      console.log('[STT] Already attempted transcription');
+      return;
+    }
+
+    console.log('[STT] Starting transcription for:', { chatId, messageId, filePath });
     attemptedRef.current = true;
     transcribe(chatId, messageId, filePath);
   }, [isVoice, text, isTranscribing, chatId, messageId, filePath, transcribe]);

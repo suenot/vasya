@@ -1,0 +1,31 @@
+/* Voice transcription in messages */
+.voice-transcription {
+  margin-top: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent-color);
+}
+
+.voice-transcription-loading {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Media attachments common styles */
+.media-audio {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.file-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}

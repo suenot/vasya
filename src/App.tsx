@@ -6,6 +6,7 @@ import { useSettingsStore } from './store/settingsStore';
 import { useAccountsStore } from './store/accountsStore';
 import { useThemeStore } from './store/themeStore';
 import { useConnectionStore } from './store/connectionStore';
+import { useSttStore } from './store/sttStore';
 import { useSystemTheme } from './hooks/useSystemTheme';
 import { useTauriEvent } from './hooks/useTauriEvent';
 import { useTauriCommand } from './hooks/useTauriCommand';
@@ -28,8 +29,14 @@ function App() {
   const setConnected = useConnectionStore((s) => s.setConnected);
   const setDisconnected = useConnectionStore((s) => s.setDisconnected);
   const setReconnecting = useConnectionStore((s) => s.setReconnecting);
+  const loadSttSettings = useSttStore((s) => s.loadSettings);
   const systemTheme = useSystemTheme();
   const updateApiCredentials = useTauriCommand<void, { apiId: number; apiHash: string }>('update_api_credentials');
+
+  // Load STT settings on mount
+  useEffect(() => {
+    loadSttSettings();
+  }, [loadSttSettings]);
 
   // Track connection status from Rust backend
   useTauriEvent<ConnectionStatusEvent>('connection-status', useCallback((evt) => {
