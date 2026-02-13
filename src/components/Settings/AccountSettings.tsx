@@ -1,15 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ProfileSettings } from './ProfileSettings';
 import { useAccountsStore } from '../../store/accountsStore';
 import { useThemeStore, ThemeSetting } from '../../store/themeStore';
 import { useDownloadStore } from '../../store/downloadStore';
+import { useSttStore, SttProvider } from '../../store/sttStore';
 import './AccountSettings.css';
 
 interface AccountSettingsProps {
   onClose: () => void;
 }
 
-type SettingsSection = 'general' | 'privacy' | 'data' | 'downloads' | 'folders' | 'devices' | 'language';
+type SettingsSection = 'general' | 'privacy' | 'data' | 'downloads' | 'stt' | 'folders' | 'devices' | 'language';
 
 export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
   const { getActiveAccount } = useAccountsStore();
@@ -18,6 +19,21 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
   const [showProfileEdit, setShowProfileEdit] = useState(false);
 
   const { queued, active, completed, failed, activeItems, queuedItems } = useDownloadStore();
+  const sttSettings = useSttStore((s) => s.settings);
+  const sttLoading = useSttStore((s) => s.loading);
+  const whisperModels = useSttStore((s) => s.whisperModels);
+  const loadSttSettings = useSttStore((s) => s.loadSettings);
+  const saveSttSettings = useSttStore((s) => s.saveSettings);
+  const loadWhisperModels = useSttStore((s) => s.loadWhisperModels);
+  const downloadModel = useSttStore((s) => s.downloadModel);
+  const [downloadingModel, setDownloadingModel] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeSection === 'stt') {
+      loadSttSettings();
+      loadWhisperModels();
+    }
+  }, [activeSection, loadSttSettings, loadWhisperModels]);
   const activeAccount = getActiveAccount();
 
   const handleThemeChange = (newTheme: ThemeSetting) => {
@@ -323,6 +339,136 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
     );
   };
 
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
+  };
+
+  const handleDownloadModel = async (name: string) => {
+    setDownloadingModel(name);
+    try {
+      await downloadModel(name);
+    } catch {
+      // error logged in store
+    } finally {
+      setDownloadingModel(null);
+    }
+  };
+
+  const renderSttSettings = () => (
+    <div className="settings-content">
+      <h2>Распознавание голоса (STT)</h2>
+
+      <div className="settings-group">
+        <h3>Провайдер</h3>
+
+        <div className="stt-provider-options">
+          <label className={`stt-provider-option ${sttSettings.provider === 'deepgram' ? 'active' : ''}`}>
+            <input
+              type="radio"
+              name="stt-provider"
+              value="deepgram"
+              checked={sttSettings.provider === 'deepgram'}
+              onChange={() => saveSttSettings({ provider: 'deepgram' as SttProvider })}
+            />
+            <div className="stt-provider-info">
+              <div className="stt-provider-name">Deepgram (облако)</div>
+              <div className="stt-provider-desc">
+                Быстро и качественно. Требуется интернет. API-ключ зашит в приложение.
+              </div>
+            </div>
+          </label>
+
+          <label className={`stt-provider-option ${sttSettings.provider === 'local_whisper' ? 'active' : ''}`}>
+            <input
+              type="radio"
+              name="stt-provider"
+              value="local_whisper"
+              checked={sttSettings.provider === 'local_whisper'}
+              onChange={() => saveSttSettings({ provider: 'local_whisper' as SttProvider })}
+            />
+            <div className="stt-provider-info">
+              <div className="stt-provider-name">Whisper (локально)</div>
+              <div className="stt-provider-desc">
+                Полностью офлайн. Приватно. Требуется скачать модель.
+              </div>
+              <div className="stt-provider-warning">
+                ~1 ГБ ОЗУ при использовании (для телефонов может быть критично)
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div className="settings-group">
+        <h3>Язык распознавания</h3>
+        <select
+          className="stt-language-select"
+          value={sttSettings.language}
+          onChange={(e) => saveSttSettings({ language: e.target.value })}
+        >
+          <option value="ru">Русский</option>
+          <option value="en">English</option>
+          <option value="uk">Українська</option>
+          <option value="de">Deutsch</option>
+          <option value="fr">Fran&ccedil;ais</option>
+          <option value="es">Espa&ntilde;ol</option>
+          <option value="multi">Авто (мультиязык)</option>
+        </select>
+      </div>
+
+      {sttSettings.provider === 'local_whisper' && (
+        <div className="settings-group">
+          <h3>Модели Whisper</h3>
+          <div className="stt-models-list">
+            {whisperModels.map((model) => (
+              <div key={model.name} className="stt-model-item">
+                <div className="stt-model-info">
+                  <div className="stt-model-name">
+                    {model.name}
+                    {sttSettings.whisper_model === model.name && (
+                      <span className="stt-model-active"> (активна)</span>
+                    )}
+                  </div>
+                  <div className="stt-model-size">
+                    {model.downloaded && model.size ? formatSize(model.size) : (
+                      model.name === 'tiny' ? '~75 MB' :
+                      model.name === 'base' ? '~142 MB' :
+                      '~466 MB'
+                    )}
+                  </div>
+                </div>
+                <div className="stt-model-actions">
+                  {model.downloaded ? (
+                    <>
+                      <span className="stt-model-downloaded">Скачана</span>
+                      {sttSettings.whisper_model !== model.name && (
+                        <button
+                          className="stt-model-select-btn"
+                          onClick={() => saveSttSettings({ whisper_model: model.name })}
+                        >
+                          Выбрать
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <button
+                      className="stt-model-download-btn"
+                      disabled={sttLoading || downloadingModel !== null}
+                      onClick={() => handleDownloadModel(model.name)}
+                    >
+                      {downloadingModel === model.name ? 'Загрузка...' : 'Скачать'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeSection) {
       case 'general':
@@ -333,6 +479,8 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
         return renderDataSettings();
       case 'downloads':
         return renderDownloadsSettings();
+      case 'stt':
+        return renderSttSettings();
       case 'folders':
         return (
           <div className="settings-content">
@@ -425,6 +573,20 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
                 </span>
                 Downloads
                 {(active + queued > 0) && <span className="settings-nav-badge">{active + queued}</span>}
+              </button>
+              <button
+                className={`settings-nav-item ${activeSection === 'stt' ? 'active' : ''}`}
+                onClick={() => setActiveSection('stt')}
+              >
+                <span className="settings-nav-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                    <path d="M19 10v2a7 7 0 01-14 0v-2" />
+                    <line x1="12" y1="19" x2="12" y2="23" />
+                    <line x1="8" y1="23" x2="16" y2="23" />
+                  </svg>
+                </span>
+                Голос (STT)
               </button>
               <button
                 className={`settings-nav-item ${activeSection === 'folders' ? 'active' : ''}`}

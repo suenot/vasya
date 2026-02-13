@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useMediaQueue } from '../../hooks/useMediaQueue';
+import { useSttStore } from '../../store/sttStore';
 import { MediaInfo } from '../../types/telegram';
 
 interface MediaAttachmentProps {
@@ -19,6 +20,51 @@ const formatFileSize = (bytes: number): string => {
 
 // Types that auto-download when visible
 const AUTO_DOWNLOAD_TYPES = new Set(['photo', 'sticker', 'voice']);
+
+/** Auto-transcribe voice messages after download */
+const VoiceWithTranscription = ({
+  fileSrc,
+  filePath,
+  fileName,
+  chatId,
+  messageId,
+  isVoice,
+}: {
+  fileSrc: string;
+  filePath: string;
+  fileName?: string | null;
+  chatId: number;
+  messageId: number;
+  isVoice: boolean;
+}) => {
+  const transcriptions = useSttStore((s) => s.transcriptions);
+  const transcribing = useSttStore((s) => s.transcribing);
+  const transcribe = useSttStore((s) => s.transcribe);
+
+  const key = `${chatId}_${messageId}`;
+  const text = transcriptions[key];
+  const isTranscribing = transcribing.has(key);
+  const attemptedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isVoice || text !== undefined || isTranscribing || attemptedRef.current) return;
+    attemptedRef.current = true;
+    transcribe(chatId, messageId, filePath);
+  }, [isVoice, text, isTranscribing, chatId, messageId, filePath, transcribe]);
+
+  return (
+    <div className="media-audio">
+      <audio src={fileSrc} controls style={{ width: '100%' }} />
+      {fileName && <div className="file-name">{fileName}</div>}
+      {isVoice && isTranscribing && (
+        <div className="voice-transcription-loading">Распознавание...</div>
+      )}
+      {isVoice && text && (
+        <div className="voice-transcription">{text}</div>
+      )}
+    </div>
+  );
+};
 
 export const MediaAttachment = ({
   media,
@@ -173,10 +219,14 @@ export const MediaAttachment = ({
     case 'audio':
     case 'voice':
       return (
-        <div className="media-audio">
-          <audio src={fileSrc} controls style={{ width: '100%' }} />
-          {currentMedia.file_name && <div className="file-name">{currentMedia.file_name}</div>}
-        </div>
+        <VoiceWithTranscription
+          fileSrc={fileSrc}
+          filePath={currentMedia.file_path!}
+          fileName={currentMedia.file_name}
+          chatId={chatId}
+          messageId={messageId}
+          isVoice={media.media_type === 'voice'}
+        />
       );
     case 'document':
       return (

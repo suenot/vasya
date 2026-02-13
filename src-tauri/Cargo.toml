@@ -68,3 +68,6 @@ json5 = "0.4"
 
 dotenvy = "0.15"
 tauri-plugin-clipboard-manager = "2"
+
+# HTTP client for Deepgram STT API
+reqwest = { version = "0.12", features = ["json"] }

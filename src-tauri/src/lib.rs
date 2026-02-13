@@ -98,6 +98,11 @@ pub fn run() {
             commands::search_messages,
             commands::get_my_avatar,
             commands::delete_and_leave_chat,
+            commands::get_stt_settings,
+            commands::set_stt_settings,
+            commands::transcribe_audio,
+            commands::download_whisper_model,
+            commands::get_whisper_models_status,
         ])
         .setup(|app| {
             let app_dir = app
