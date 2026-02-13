@@ -292,6 +292,7 @@ export const MainLayout = () => {
         <div className="messages-area">
           {selectedChat && activeAccount ? (
             <MessageList
+              key={selectedChat.id}
               ref={messageListRef}
               accountId={activeAccount.id}
               chatId={selectedChat.id}

@@ -162,8 +162,11 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ ac
 
   // Load initial messages
   useEffect(() => {
+    // Reset state for new chat
     initialLoadDone.current = false;
     loadingRef.current = true;
+    prevMessagesLength.current = 0; // Reset length tracker so it triggers auto-scroll on load
+
 
     const load = async () => {
       try {
@@ -179,6 +182,11 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ ac
       } finally {
         loadingRef.current = false;
         initialLoadDone.current = true;
+        // Force scroll to bottom after initial load, regardless of useEffect race conditions
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+          prevMessagesLength.current = useMessagesStore.getState().messagesByChat[chatId]?.length || 0;
+        }, 50);
       }
     };
 
@@ -192,8 +200,12 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ ac
 
     // Only auto-scroll when it's the initial load for this chat
     // (length went from 0 to N) — NOT on prepend (length grows at start)
+    // Also scroll if we were waiting for initial load and now we have messages
     if (prevMessagesLength.current === 0 && messages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      // Use setTimeout to ensure DOM is fully painted
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 0);
     }
     prevMessagesLength.current = messages.length;
   }, [messages.length]);
