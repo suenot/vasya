@@ -177,7 +177,7 @@ jobs:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
       - name: Build Android APK
-        run: npx tauri android build --apk
+        run: npx tauri android build --apk true
         env:
           NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
 
