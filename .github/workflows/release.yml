@@ -64,12 +64,15 @@ jobs:
       - name: Create .env
         shell: bash
         run: |
-          cat > .env <<'ENVEOF'
-          TELEGRAM_API_ID=${{ secrets.TELEGRAM_API_ID }}
-          TELEGRAM_API_HASH=${{ secrets.TELEGRAM_API_HASH }}
-          DEEPGRAM_API_KEY=${{ secrets.DEEPGRAM_API_KEY }}
-          ENVEOF
-          sed -i 's/^[[:space:]]*//' .env
+          printf '%s\n' \
+            "TELEGRAM_API_ID=$TELEGRAM_API_ID" \
+            "TELEGRAM_API_HASH=$TELEGRAM_API_HASH" \
+            "DEEPGRAM_API_KEY=$DEEPGRAM_API_KEY" \
+            > .env
+        env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
 
       # Remove stt-sidecar from bundle — not building it in CI
       # To re-enable, build stt-sidecar before this step and remove this step
@@ -161,12 +164,15 @@ jobs:
 
       - name: Create .env
         run: |
-          cat > .env <<'ENVEOF'
-          TELEGRAM_API_ID=${{ secrets.TELEGRAM_API_ID }}
-          TELEGRAM_API_HASH=${{ secrets.TELEGRAM_API_HASH }}
-          DEEPGRAM_API_KEY=${{ secrets.DEEPGRAM_API_KEY }}
-          ENVEOF
-          sed -i 's/^[[:space:]]*//' .env
+          printf '%s\n' \
+            "TELEGRAM_API_ID=$TELEGRAM_API_ID" \
+            "TELEGRAM_API_HASH=$TELEGRAM_API_HASH" \
+            "DEEPGRAM_API_KEY=$DEEPGRAM_API_KEY" \
+            > .env
+        env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
 
       # Remove stt-sidecar — Android uses Deepgram cloud STT
       - name: Remove stt-sidecar from bundle config
