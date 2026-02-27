@@ -7,10 +7,11 @@ use tokio::sync::RwLock;
 use crate::AppState;
 
 /// Check if API credentials are already configured in the backend (e.g. from bundled .env)
+/// Returns true if valid credentials exist, without exposing the actual values.
 #[tauri::command]
-pub async fn get_api_credentials(
+pub async fn has_api_credentials(
     state: State<'_, Arc<RwLock<AppState>>>,
-) -> Result<(i32, String), String> {
+) -> Result<bool, String> {
     let state_guard = state.read().await;
     let client_manager = state_guard
         .client_manager
@@ -19,7 +20,7 @@ pub async fn get_api_credentials(
 
     let api_id = client_manager.api_id();
     let api_hash = client_manager.api_hash();
-    Ok((api_id, api_hash))
+    Ok(api_id != 0 && !api_hash.is_empty())
 }
 
 /// Update API credentials in place (no manager replacement to avoid UpdateStream drop panics)

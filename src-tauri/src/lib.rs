@@ -91,7 +91,7 @@ pub fn run() {
             commands::verify_code,
             commands::check_password,
             commands::logout,
-            commands::get_api_credentials,
+            commands::has_api_credentials,
             commands::update_api_credentials,
             commands::get_chats,
             commands::get_cached_chats,
