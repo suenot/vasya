@@ -64,11 +64,12 @@ jobs:
       - name: Create .env
         shell: bash
         run: |
-          cat > .env << 'ENVEOF'
+          cat > .env <<'ENVEOF'
           TELEGRAM_API_ID=${{ secrets.TELEGRAM_API_ID }}
           TELEGRAM_API_HASH=${{ secrets.TELEGRAM_API_HASH }}
           DEEPGRAM_API_KEY=${{ secrets.DEEPGRAM_API_KEY }}
           ENVEOF
+          sed -i 's/^[[:space:]]*//' .env
 
       # Remove stt-sidecar from bundle — not building it in CI
       # To re-enable, build stt-sidecar before this step and remove this step
@@ -160,11 +161,12 @@ jobs:
 
       - name: Create .env
         run: |
-          cat > .env << 'ENVEOF'
+          cat > .env <<'ENVEOF'
           TELEGRAM_API_ID=${{ secrets.TELEGRAM_API_ID }}
           TELEGRAM_API_HASH=${{ secrets.TELEGRAM_API_HASH }}
           DEEPGRAM_API_KEY=${{ secrets.DEEPGRAM_API_KEY }}
           ENVEOF
+          sed -i 's/^[[:space:]]*//' .env
 
       # Remove stt-sidecar — Android uses Deepgram cloud STT
       - name: Remove stt-sidecar from bundle config
@@ -174,6 +176,20 @@ jobs:
 
       - name: Initialize Tauri Android
         run: npx tauri android init
+
+      - name: Generate Android icons from app icon
+        run: |
+          sudo apt-get install -y imagemagick
+          ICON="src-tauri/icons/icon.png"
+          RES="src-tauri/gen/android/app/src/main/res"
+          for entry in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            DPI="${entry%%:*}"
+            SIZE="${entry##*:}"
+            DIR="$RES/mipmap-$DPI"
+            mkdir -p "$DIR"
+            convert "$ICON" -resize "${SIZE}x${SIZE}" "$DIR/ic_launcher.png"
+            convert "$ICON" -resize "${SIZE}x${SIZE}" "$DIR/ic_launcher_round.png"
+          done
 
       # ── APK signing setup ──
       # If ANDROID_KEYSTORE_BASE64 secret is set → release build with your keystore
