@@ -16,7 +16,7 @@ jobs:
       matrix:
         include:
           - platform: ubuntu-22.04
-            args: ''
+            args: '--bundles deb,rpm'
             rust_targets: ''
           - platform: macos-latest
             args: '--target aarch64-apple-darwin'
@@ -77,6 +77,31 @@ jobs:
         run: |
           jq 'del(.bundle.externalBin)' src-tauri/tauri.conf.json > src-tauri/tauri.conf.tmp.json
           mv src-tauri/tauri.conf.tmp.json src-tauri/tauri.conf.json
+
+      # Pre-download NSIS tools for Windows (Tauri's ureq HTTP client
+      # fails with "protocol: http response missing version" on GitHub CDN)
+      - name: Pre-download NSIS tools
+        if: matrix.platform == 'windows-latest'
+        shell: powershell
+        run: |
+          $nsisDir = "$env:LOCALAPPDATA\tauri\NSIS"
+          New-Item -ItemType Directory -Force -Path $nsisDir | Out-Null
+
+          # Download and extract NSIS
+          curl.exe --retry 5 --retry-delay 3 -fSL -o "$env:TEMP\nsis-3.11.zip" `
+            "https://github.com/tauri-apps/binary-releases/releases/download/nsis-3.11/nsis-3.11.zip"
+          Expand-Archive -Path "$env:TEMP\nsis-3.11.zip" -DestinationPath $nsisDir -Force
+
+          # Download NSIS Tauri utils plugin
+          $pluginDir = "$nsisDir\nsis-3.11\Plugins\x86-unicode\additional"
+          if (!(Test-Path $pluginDir)) {
+            New-Item -ItemType Directory -Force -Path $pluginDir | Out-Null
+          }
+          curl.exe --retry 5 --retry-delay 3 -fSL -o "$pluginDir\nsis_tauri_utils.dll" `
+            "https://github.com/tauri-apps/nsis-tauri-utils/releases/download/nsis_tauri_utils-v0.5.3/nsis_tauri_utils.dll"
+
+          Write-Host "NSIS tools pre-downloaded to $nsisDir"
+          Get-ChildItem -Recurse $nsisDir | Select-Object FullName | Format-Table -AutoSize
 
       - uses: tauri-apps/tauri-action@v0
         env:
