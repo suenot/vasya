@@ -32,6 +32,21 @@ function App() {
   const loadSttSettings = useSttStore((s) => s.loadSettings);
   const systemTheme = useSystemTheme();
   const updateApiCredentials = useTauriCommand<void, { apiId: number; apiHash: string }>('update_api_credentials');
+  const getApiCredentials = useTauriCommand<[number, string]>('get_api_credentials');
+
+  // On mount: check if backend already has credentials (from bundled .env)
+  useEffect(() => {
+    if (!isConfigured) {
+      getApiCredentials().then((result) => {
+        const [apiId, apiHash] = result;
+        if (apiId && apiId !== 0 && apiHash && apiHash.length > 0) {
+          setApiCredentials(String(apiId), apiHash);
+        }
+      }).catch(() => {
+        // Backend not ready yet, user will see setup screen
+      });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load STT settings on mount
   useEffect(() => {
