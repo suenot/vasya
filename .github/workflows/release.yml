@@ -25,7 +25,7 @@ jobs:
             args: '--target x86_64-apple-darwin'
             rust_targets: 'x86_64-apple-darwin'
           - platform: windows-latest
-            args: ''
+            args: '--bundles nsis'
             rust_targets: ''
 
     runs-on: ${{ matrix.platform }}
