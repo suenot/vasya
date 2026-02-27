@@ -1,0 +1,228 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # ─── Desktop builds (Linux, macOS, Windows) ───────────────────────
+  build-desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+            args: ''
+            rust_targets: ''
+          - platform: macos-latest
+            args: '--target aarch64-apple-darwin'
+            rust_targets: 'aarch64-apple-darwin'
+          - platform: macos-latest
+            args: '--target x86_64-apple-darwin'
+            rust_targets: 'x86_64-apple-darwin'
+          - platform: windows-latest
+            args: ''
+            rust_targets: ''
+
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      # Linux: install WebKitGTK and other system dependencies
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev
+
+      - run: npm ci
+
+      - name: Create .env
+        shell: bash
+        run: |
+          cat > .env << 'ENVEOF'
+          TELEGRAM_API_ID=${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH=${{ secrets.TELEGRAM_API_HASH }}
+          DEEPGRAM_API_KEY=${{ secrets.DEEPGRAM_API_KEY }}
+          ENVEOF
+
+      # Remove stt-sidecar from bundle — not building it in CI
+      # To re-enable, build stt-sidecar before this step and remove this step
+      - name: Remove stt-sidecar from bundle config
+        shell: bash
+        run: |
+          jq 'del(.bundle.externalBin)' src-tauri/tauri.conf.json > src-tauri/tauri.conf.tmp.json
+          mv src-tauri/tauri.conf.tmp.json src-tauri/tauri.conf.json
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS code signing (optional — set these secrets for signed builds):
+          # APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          # APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          # APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          # APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          # APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          # APPLE_API_KEY_PATH: ${{ secrets.APPLE_API_KEY_PATH }}
+        with:
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          releaseName: 'Vasyapp ${{ github.ref_name }}'
+          releaseBody: 'See the assets below to download and install this version.'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+
+  # ─── Android build ────────────────────────────────────────────────
+  build-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install Android NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r25c
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - run: npm ci
+
+      - name: Create .env
+        run: |
+          cat > .env << 'ENVEOF'
+          TELEGRAM_API_ID=${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH=${{ secrets.TELEGRAM_API_HASH }}
+          DEEPGRAM_API_KEY=${{ secrets.DEEPGRAM_API_KEY }}
+          ENVEOF
+
+      # Remove stt-sidecar — Android uses Deepgram cloud STT
+      - name: Remove stt-sidecar from bundle config
+        run: |
+          jq 'del(.bundle.externalBin)' src-tauri/tauri.conf.json > src-tauri/tauri.conf.tmp.json
+          mv src-tauri/tauri.conf.tmp.json src-tauri/tauri.conf.json
+
+      - name: Initialize Tauri Android
+        run: npx tauri android init
+
+      # ── APK signing setup ──
+      # If ANDROID_KEYSTORE_BASE64 secret is set → release build with your keystore
+      # Otherwise → auto-generated keystore (for testing / dev releases)
+      - name: Setup Android signing keystore
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > /tmp/upload-keystore.jks
+            echo "KS_PATH=/tmp/upload-keystore.jks" >> $GITHUB_ENV
+            echo "KS_PASS=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}" >> $GITHUB_ENV
+            echo "KEY_PASS=${{ secrets.ANDROID_KEY_PASSWORD }}" >> $GITHUB_ENV
+          else
+            keytool -genkeypair -v \
+              -keystore /tmp/upload-keystore.jks \
+              -alias release \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass android -keypass android \
+              -dname "CN=Vasyapp CI,O=Vasyapp,C=US"
+            echo "KS_PATH=/tmp/upload-keystore.jks" >> $GITHUB_ENV
+            echo "KS_PASS=android" >> $GITHUB_ENV
+            echo "KEY_ALIAS=release" >> $GITHUB_ENV
+            echo "KEY_PASS=android" >> $GITHUB_ENV
+          fi
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+
+      - name: Build Android APK
+        run: npx tauri android build --apk
+        env:
+          NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+
+      # Sign the release APK (release builds are unsigned by default)
+      - name: Sign APK
+        run: |
+          APKSIGNER=$(find $ANDROID_HOME/build-tools -name apksigner -type f | sort -V | tail -1)
+          ZIPALIGN=$(find $ANDROID_HOME/build-tools -name zipalign -type f | sort -V | tail -1)
+
+          echo "Using apksigner: $APKSIGNER"
+          echo "Using zipalign: $ZIPALIGN"
+
+          for APK in $(find src-tauri/gen/android/app/build/outputs/apk -name "*.apk"); do
+            echo "── Signing: $APK"
+
+            # Zipalign
+            "$ZIPALIGN" -f 4 "$APK" "${APK%.apk}-aligned.apk"
+
+            # Sign with v2 scheme
+            "$APKSIGNER" sign \
+              --ks "$KS_PATH" \
+              --ks-key-alias "$KEY_ALIAS" \
+              --ks-pass "pass:$KS_PASS" \
+              --key-pass "pass:$KEY_PASS" \
+              --out "$APK" \
+              "${APK%.apk}-aligned.apk"
+
+            # Verify
+            "$APKSIGNER" verify --verbose "$APK"
+            rm -f "${APK%.apk}-aligned.apk"
+            echo "✓ Signed successfully"
+          done
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vasyapp-android-apk
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+
+      - name: Upload to Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
