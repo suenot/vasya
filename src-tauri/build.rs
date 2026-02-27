@@ -30,19 +30,13 @@ fn main() {
         if let Ok(val) = std::env::var(key) {
             if !val.is_empty() {
                 println!("cargo:rustc-env={}={}", key, val);
-                println!("cargo:warning={}=<set from env>", key);
                 continue;
             }
         }
         if let Some(val) = from_file.get(*key) {
             if !val.is_empty() {
                 println!("cargo:rustc-env={}={}", key, val);
-                println!("cargo:warning={}=<set from .env file>", key);
-            } else {
-                println!("cargo:warning={}=<EMPTY in .env file>", key);
             }
-        } else {
-            println!("cargo:warning={}=<MISSING — not in env or .env>", key);
         }
     }
 
