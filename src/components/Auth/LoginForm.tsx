@@ -43,7 +43,9 @@ export const LoginForm = ({ onCancel }: LoginFormProps) => {
       setAuthToken(result.token_data);
       setStep('code');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка при запросе кода');
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('Login code request failed:', msg);
+      setError(msg || 'Ошибка при запросе кода');
     } finally {
       setLoading(false);
     }
