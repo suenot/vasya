@@ -1,5 +1,14 @@
 fn main() {
-    // Embed TELEGRAM_API_ID and TELEGRAM_API_HASH from .env into the binary at compile time
+    // Embed secrets into the binary at compile time via option_env!()
+    // Priority: environment variable > .env file
+    let keys = [
+        "TELEGRAM_API_ID",
+        "TELEGRAM_API_HASH",
+        "DEEPGRAM_API_KEY",
+    ];
+
+    // Try loading from .env file first (for local dev)
+    let mut from_file = std::collections::HashMap::new();
     let env_path = std::path::Path::new("../.env");
     if env_path.exists() {
         println!("cargo:rerun-if-changed=../.env");
@@ -10,12 +19,23 @@ fn main() {
                     continue;
                 }
                 if let Some((key, value)) = line.split_once('=') {
-                    let key = key.trim();
-                    let value = value.trim();
-                    if key == "TELEGRAM_API_ID" || key == "TELEGRAM_API_HASH" {
-                        println!("cargo:rustc-env={}={}", key, value);
-                    }
+                    from_file.insert(key.trim().to_string(), value.trim().to_string());
                 }
+            }
+        }
+    }
+
+    // For each key: use env var if set, otherwise fall back to .env file value
+    for key in &keys {
+        if let Ok(val) = std::env::var(key) {
+            if !val.is_empty() {
+                println!("cargo:rustc-env={}={}", key, val);
+                continue;
+            }
+        }
+        if let Some(val) = from_file.get(*key) {
+            if !val.is_empty() {
+                println!("cargo:rustc-env={}={}", key, val);
             }
         }
     }

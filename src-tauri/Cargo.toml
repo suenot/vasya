@@ -66,7 +66,6 @@ lazy_static = "1.5"
 # JSON5 для config.rs
 json5 = "0.4"
 
-dotenvy = "0.15"
 tauri-plugin-clipboard-manager = "2"
 
 # HTTP client for Deepgram STT API

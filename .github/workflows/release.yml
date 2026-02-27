@@ -61,25 +61,12 @@ jobs:
 
       - run: npm ci
 
-      - name: Create .env
-        shell: bash
-        run: |
-          printf '%s\n' \
-            "TELEGRAM_API_ID=$TELEGRAM_API_ID" \
-            "TELEGRAM_API_HASH=$TELEGRAM_API_HASH" \
-            "DEEPGRAM_API_KEY=$DEEPGRAM_API_KEY" \
-            > .env
-        env:
-          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
-          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
-          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
-
       # Remove stt-sidecar from bundle — not building it in CI
       # To re-enable, build stt-sidecar before this step and remove this step
       - name: Remove stt-sidecar from bundle config
         shell: bash
         run: |
-          jq 'del(.bundle.externalBin)' src-tauri/tauri.conf.json > src-tauri/tauri.conf.tmp.json
+          jq 'del(.bundle.externalBin) | del(.bundle.resources)' src-tauri/tauri.conf.json > src-tauri/tauri.conf.tmp.json
           mv src-tauri/tauri.conf.tmp.json src-tauri/tauri.conf.json
 
       # Pre-download NSIS tools for Windows (Tauri's ureq HTTP client
@@ -110,6 +97,9 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
           # macOS code signing (optional — set these secrets for signed builds):
           # APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           # APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -162,22 +152,10 @@ jobs:
 
       - run: npm ci
 
-      - name: Create .env
-        run: |
-          printf '%s\n' \
-            "TELEGRAM_API_ID=$TELEGRAM_API_ID" \
-            "TELEGRAM_API_HASH=$TELEGRAM_API_HASH" \
-            "DEEPGRAM_API_KEY=$DEEPGRAM_API_KEY" \
-            > .env
-        env:
-          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
-          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
-          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
-
       # Remove stt-sidecar — Android uses Deepgram cloud STT
       - name: Remove stt-sidecar from bundle config
         run: |
-          jq 'del(.bundle.externalBin)' src-tauri/tauri.conf.json > src-tauri/tauri.conf.tmp.json
+          jq 'del(.bundle.externalBin) | del(.bundle.resources)' src-tauri/tauri.conf.json > src-tauri/tauri.conf.tmp.json
           mv src-tauri/tauri.conf.tmp.json src-tauri/tauri.conf.json
 
       - name: Initialize Tauri Android
@@ -227,6 +205,9 @@ jobs:
         run: npx tauri android build --apk true
         env:
           NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
 
       # Sign the release APK (release builds are unsigned by default)
       - name: Sign APK
