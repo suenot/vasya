@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTauriCommand } from '../../hooks/useTauriCommand';
 import { useAuthStore } from '../../store/authStore';
 import { useAccountsStore } from '../../store/accountsStore';
+import { useTranslation, useLanguageStore, LANGUAGE_LABELS, Language } from '../../i18n';
 import { UserInfo } from '../../types/telegram';
 import './LoginForm.css';
 
@@ -22,7 +23,6 @@ const formatPhone = (value: string): string => {
 
   if (!nums) return hasPlus ? '+' : '';
 
-  // Format: +X XXX XXX XX XX (international, flexible)
   let formatted = '+';
   for (let i = 0; i < nums.length && i < 15; i++) {
     if (i === 1 || i === 4 || i === 7 || i === 9 || i === 11) {
@@ -40,6 +40,10 @@ const stripPhone = (formatted: string): string => {
 };
 
 export const LoginForm = ({ onCancel }: LoginFormProps) => {
+  const { t } = useTranslation();
+  const { language, setLanguage } = useLanguageStore();
+  const [showLangMenu, setShowLangMenu] = useState(false);
+
   const [phone, setPhone] = useState('+');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
@@ -65,7 +69,7 @@ export const LoginForm = ({ onCancel }: LoginFormProps) => {
 
     const raw = stripPhone(phone);
     if (raw.length < 8) {
-      setError('Введите номер телефона');
+      setError(t('login_phone_error'));
       return;
     }
 
@@ -76,7 +80,7 @@ export const LoginForm = ({ onCancel }: LoginFormProps) => {
       setAuthToken(result.token_data);
       setStep('code');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка при запросе кода');
+      setError(err instanceof Error ? err.message : t('login_request_error'));
     } finally {
       setSubmitting(false);
       setLoading(false);
@@ -93,7 +97,7 @@ export const LoginForm = ({ onCancel }: LoginFormProps) => {
     setError('');
 
     if (!code.trim()) {
-      setError('Введите код подтверждения');
+      setError(t('login_code_error'));
       return;
     }
 
@@ -122,7 +126,7 @@ export const LoginForm = ({ onCancel }: LoginFormProps) => {
     setError('');
 
     if (!password.trim()) {
-      setError('Введите пароль 2FA');
+      setError(t('login_2fa_error'));
       return;
     }
 
@@ -133,7 +137,7 @@ export const LoginForm = ({ onCancel }: LoginFormProps) => {
       addAccount(authToken, user);
       setUser(user);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Неверный пароль');
+      setError(err instanceof Error ? err.message : t('login_2fa_wrong'));
     } finally {
       setSubmitting(false);
       setLoading(false);
@@ -154,6 +158,34 @@ export const LoginForm = ({ onCancel }: LoginFormProps) => {
 
   return (
     <div className="login-container">
+      {/* Language selector */}
+      <div className="login-lang-selector">
+        <button
+          className="login-lang-button"
+          onClick={() => setShowLangMenu((p) => !p)}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="2" y1="12" x2="22" y2="12" />
+            <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+          </svg>
+          {LANGUAGE_LABELS[language]}
+        </button>
+        {showLangMenu && (
+          <div className="login-lang-menu">
+            {(Object.keys(LANGUAGE_LABELS) as Language[]).map((lang) => (
+              <button
+                key={lang}
+                className={`login-lang-menu-item ${lang === language ? 'active' : ''}`}
+                onClick={() => { setLanguage(lang); setShowLangMenu(false); }}
+              >
+                {LANGUAGE_LABELS[lang]}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="login-card">
         <div className="login-logo-container">
           <img src="/vasyapp.svg" alt="Vasyapp Logo" className="login-logo" />
@@ -162,11 +194,11 @@ export const LoginForm = ({ onCancel }: LoginFormProps) => {
 
         {step === 'phone' && (
           <form onSubmit={handlePhoneSubmit} className="login-form">
-            <p className="login-subtitle">Введите номер телефона для входа</p>
+            <p className="login-subtitle">{t('login_title')}</p>
             <input
               type="tel"
               className="login-input"
-              placeholder="+7 900 123 45 67"
+              placeholder={t('login_phone_placeholder')}
               value={phone}
               onChange={handlePhoneChange}
               disabled={submitting}
@@ -174,19 +206,19 @@ export const LoginForm = ({ onCancel }: LoginFormProps) => {
             />
             {error && <div className="login-error">{error}</div>}
             <button type="submit" className="login-button" disabled={submitting}>
-              {submitting ? 'Отправка...' : 'Продолжить'}
+              {submitting ? t('login_sending') : t('login_continue')}
             </button>
-            {onCancel && <button type="button" className="login-button-secondary" onClick={onCancel} disabled={submitting}>Отмена</button>}
+            {onCancel && <button type="button" className="login-button-secondary" onClick={onCancel} disabled={submitting}>{t('cancel')}</button>}
           </form>
         )}
 
         {step === 'code' && (
           <form onSubmit={handleCodeSubmit} className="login-form">
-            <p className="login-subtitle">Мы отправили код в Telegram на<br /><strong>{phone}</strong></p>
+            <p className="login-subtitle">{t('login_code_sent')}<br /><strong>{phone}</strong></p>
             <input
               type="text"
               className="login-input login-input-code"
-              placeholder="_ _ _ _ _ _"
+              placeholder={t('login_code_placeholder')}
               value={code}
               onChange={handleCodeChange}
               disabled={submitting}
@@ -196,19 +228,19 @@ export const LoginForm = ({ onCancel }: LoginFormProps) => {
             />
             {error && <div className="login-error">{error}</div>}
             <button type="submit" className="login-button" disabled={submitting}>
-              {submitting ? 'Проверка...' : 'Войти'}
+              {submitting ? t('login_checking') : t('login_sign_in')}
             </button>
-            <button type="button" className="login-button-secondary" onClick={handleBack} disabled={submitting}>Изменить номер</button>
+            <button type="button" className="login-button-secondary" onClick={handleBack} disabled={submitting}>{t('login_change_number')}</button>
           </form>
         )}
 
         {step === '2fa' && (
           <form onSubmit={handlePasswordSubmit} className="login-form">
-            <p className="login-subtitle">У вас включена двухфакторная аутентификация<br />Введите пароль облачного хранилища</p>
+            <p className="login-subtitle">{t('login_2fa_title')}<br />{t('login_2fa_subtitle')}</p>
             <input
               type="password"
               className="login-input"
-              placeholder="Пароль 2FA"
+              placeholder={t('login_2fa_placeholder')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={submitting}
@@ -216,9 +248,9 @@ export const LoginForm = ({ onCancel }: LoginFormProps) => {
             />
             {error && <div className="login-error">{error}</div>}
             <button type="submit" className="login-button" disabled={submitting}>
-              {submitting ? 'Проверка...' : 'Подтвердить'}
+              {submitting ? t('login_checking') : t('login_2fa_confirm')}
             </button>
-            <button type="button" className="login-button-secondary" onClick={handleBack} disabled={submitting}>Назад</button>
+            <button type="button" className="login-button-secondary" onClick={handleBack} disabled={submitting}>{t('back')}</button>
           </form>
         )}
       </div>

@@ -1,6 +1,7 @@
 import { useRef, useState, useMemo } from 'react';
 import { useSttStore, WhisperProgress } from '../../store/sttStore';
 import { useTauriEvent } from '../../hooks/useTauriEvent';
+import { useTranslation, TranslationKey } from '../../i18n';
 import './VoiceMessage.css';
 
 interface VoiceMessageProps {
@@ -10,18 +11,19 @@ interface VoiceMessageProps {
     messageId: number;
 }
 
-const PROGRESS_LABELS: Record<string, string> = {
-    loading_model: 'Loading model...',
-    model_loaded: 'Model loaded',
-    converting_audio: 'Converting audio...',
-    ffmpeg_converting: 'Converting via ffmpeg...',
-    audio_ready: 'Audio ready',
-    transcribing: 'Transcribing...',
-    extracting_text: 'Extracting text...',
-    done: 'Done',
+const PROGRESS_KEYS: Record<string, TranslationKey> = {
+    loading_model: 'stt_loading_model',
+    model_loaded: 'stt_model_loaded',
+    converting_audio: 'stt_converting_audio',
+    ffmpeg_converting: 'stt_ffmpeg_converting',
+    audio_ready: 'stt_audio_ready',
+    transcribing: 'stt_transcribing',
+    extracting_text: 'stt_extracting_text',
+    done: 'stt_done',
 };
 
 export const VoiceMessage = ({ fileSrc, filePath, chatId, messageId }: VoiceMessageProps) => {
+    const { t } = useTranslation();
     const transcriptions = useSttStore((s) => s.transcriptions);
     const transcribing = useSttStore((s) => s.transcribing);
     const errors = useSttStore((s) => s.errors);
@@ -102,7 +104,7 @@ export const VoiceMessage = ({ fileSrc, filePath, chatId, messageId }: VoiceMess
 
     // Progress label for current step
     const progressLabel = isTranscribing && whisperProgress
-        ? PROGRESS_LABELS[whisperProgress.event] || 'Processing...'
+        ? (PROGRESS_KEYS[whisperProgress.event] ? t(PROGRESS_KEYS[whisperProgress.event]) : t('stt_processing'))
         : null;
 
     return (
@@ -150,7 +152,7 @@ export const VoiceMessage = ({ fileSrc, filePath, chatId, messageId }: VoiceMess
                     className={`voice-stt-button ${text ? 'active' : ''} ${error ? 'error' : ''}`}
                     onClick={handleTranscribe}
                     disabled={isTranscribing}
-                    title={error ? `Error: ${error}. Click to retry` : text ? "Transcribed" : "Transcribe to text"}
+                    title={error ? `${t('error')}: ${error}` : text ? t('stt_transcribed') : t('stt_transcribe')}
                 >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
@@ -166,7 +168,7 @@ export const VoiceMessage = ({ fileSrc, filePath, chatId, messageId }: VoiceMess
                         <div className="loading-dot"></div>
                         <div className="loading-dot"></div>
                     </div>
-                    <span>{progressLabel || 'Transcribing...'}</span>
+                    <span>{progressLabel || t('stt_transcribing')}</span>
                 </div>
             )}
 

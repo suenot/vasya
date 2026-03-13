@@ -4,6 +4,7 @@ import { useMediaQueue } from '../../hooks/useMediaQueue';
 import { MediaInfo } from '../../types/telegram';
 import { VoiceMessage } from './VoiceMessage';
 import { ImageViewer } from './ImageViewer';
+import { useTranslation } from '../../i18n';
 import './MediaAttachment.css';
 
 interface MediaAttachmentProps {
@@ -32,6 +33,7 @@ export const MediaAttachment = ({
   messageId,
   messageText,
 }: MediaAttachmentProps) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [loadedMedia, setLoadedMedia] = useState<MediaInfo | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -98,7 +100,7 @@ export const MediaAttachment = ({
       <div className="media-webpage">
         <div className="webpage-icon">🔗</div>
         <div className="webpage-content">
-          <div className="webpage-title">Link Preview</div>
+          <div className="webpage-title">{t('link_preview')}</div>
           {url && (
             <a href={url} target="_blank" rel="noopener noreferrer" className="webpage-url">
               {url.length > 50 ? url.substring(0, 50) + '...' : url}
@@ -116,7 +118,7 @@ export const MediaAttachment = ({
         {loading ? (
           <div className="media-download-progress">
             <div className="media-download-spinner" />
-            <span>Downloading {media.media_type}...</span>
+            <span>{t('downloading_type', { type: media.media_type })}</span>
           </div>
         ) : (
           <div className="media-download-prompt">
@@ -137,7 +139,7 @@ export const MediaAttachment = ({
                       media.media_type}
               {media.file_size ? ` (${formatFileSize(media.file_size)})` : ''}
             </span>
-            <span className="media-download-tap">Tap to download</span>
+            <span className="media-download-tap">{t('tap_to_download')}</span>
           </div>
         )}
       </div>
@@ -151,10 +153,10 @@ export const MediaAttachment = ({
         {loading ? (
           <div className="media-download-progress">
             <div className="media-download-spinner" />
-            <span>Loading {media.media_type}...</span>
+            <span>{t('loading_type', { type: media.media_type })}</span>
           </div>
         ) : (
-          <div>{media.media_type} (failed to load)</div>
+          <div>{t('failed_to_load', { type: media.media_type })}</div>
         )}
       </div>
     );

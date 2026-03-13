@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAccountsStore } from '../../store/accountsStore';
+import { useTranslation } from '../../i18n';
 import './ProfileSettings.css';
 
 interface ProfileSettingsProps {
@@ -7,6 +8,7 @@ interface ProfileSettingsProps {
 }
 
 export const ProfileSettings = ({ onClose }: ProfileSettingsProps) => {
+  const { t } = useTranslation();
   const { getActiveAccount } = useAccountsStore();
   const activeAccount = getActiveAccount();
 
@@ -16,7 +18,6 @@ export const ProfileSettings = ({ onClose }: ProfileSettingsProps) => {
   const [username, setUsername] = useState(activeAccount?.userInfo?.username || '');
 
   const handleSave = () => {
-    // TODO: Реализовать сохранение профиля через Tauri команду
     console.log('Saving profile:', { firstName, lastName, bio, username });
     onClose();
   };
@@ -28,58 +29,56 @@ export const ProfileSettings = ({ onClose }: ProfileSettingsProps) => {
           <button className="profile-back-button" onClick={onClose}>
             ‹
           </button>
-          <h2>Редактировать профиль</h2>
+          <h2>{t('edit_profile')}</h2>
           <button className="profile-save-button" onClick={handleSave}>
-            Готово
+            {t('done')}
           </button>
         </header>
 
         <div className="profile-settings-content">
-          {/* Аватар */}
           <div className="profile-avatar-section">
             <div className="profile-avatar-large">
               {activeAccount?.userInfo?.first_name?.substring(0, 1)?.toUpperCase() || 'ME'}
             </div>
-            <button className="profile-avatar-upload">Загрузить фото</button>
+            <button className="profile-avatar-upload">{t('upload_photo')}</button>
           </div>
 
-          {/* Форма */}
           <div className="profile-form">
             <div className="profile-form-group">
-              <label htmlFor="firstName">Имя</label>
+              <label htmlFor="firstName">{t('first_name')}</label>
               <input
                 id="firstName"
                 type="text"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                placeholder="Введите имя"
+                placeholder={t('first_name_placeholder')}
               />
             </div>
 
             <div className="profile-form-group">
-              <label htmlFor="lastName">Фамилия</label>
+              <label htmlFor="lastName">{t('last_name')}</label>
               <input
                 id="lastName"
                 type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                placeholder="Введите фамилию"
+                placeholder={t('last_name_placeholder')}
               />
             </div>
 
             <div className="profile-form-group">
-              <label htmlFor="bio">О себе</label>
+              <label htmlFor="bio">{t('bio')}</label>
               <textarea
                 id="bio"
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
-                placeholder="Добавьте несколько слов о себе"
+                placeholder={t('bio_placeholder')}
                 rows={4}
               />
             </div>
 
             <div className="profile-form-group">
-              <label htmlFor="username">Имя пользователя</label>
+              <label htmlFor="username">{t('username_label')}</label>
               <input
                 id="username"
                 type="text"
@@ -88,21 +87,20 @@ export const ProfileSettings = ({ onClose }: ProfileSettingsProps) => {
                 placeholder="@username"
               />
               <span className="profile-form-hint">
-                Можно использовать a-z, 0-9 и подчёркивания. Минимум 5 символов.
+                {t('username_hint')}
               </span>
             </div>
           </div>
 
-          {/* Информация о профиле */}
           <div className="profile-info-section">
-            <h3>Информация</h3>
+            <h3>{t('information')}</h3>
             <div className="profile-info-item">
-              <span className="profile-info-label">Телефон</span>
-              <span className="profile-info-value">{activeAccount?.userInfo?.phone || 'Не указан'}</span>
+              <span className="profile-info-label">{t('phone')}</span>
+              <span className="profile-info-value">{activeAccount?.userInfo?.phone || t('not_set')}</span>
             </div>
             <div className="profile-info-item">
-              <span className="profile-info-label">ID аккаунта</span>
-              <span className="profile-info-value">{activeAccount?.id || 'Не указан'}</span>
+              <span className="profile-info-label">{t('account_id')}</span>
+              <span className="profile-info-value">{activeAccount?.id || t('not_set')}</span>
             </div>
           </div>
         </div>

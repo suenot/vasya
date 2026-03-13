@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from '../../i18n';
 import './ApiSettings.css';
 
 interface ApiSettingsProps {
@@ -6,6 +7,7 @@ interface ApiSettingsProps {
 }
 
 export const ApiSettings = ({ onSave }: ApiSettingsProps) => {
+  const { t } = useTranslation();
   const [apiId, setApiId] = useState('');
   const [apiHash, setApiHash] = useState('');
   const [error, setError] = useState('');
@@ -15,13 +17,13 @@ export const ApiSettings = ({ onSave }: ApiSettingsProps) => {
     setError('');
 
     if (!apiId.trim() || !apiHash.trim()) {
-      setError('Заполните все поля');
+      setError(t('api_fill_fields'));
       return;
     }
 
     const parsedApiId = parseInt(apiId);
     if (isNaN(parsedApiId)) {
-      setError('API ID должен быть числом');
+      setError(t('api_id_number'));
       return;
     }
 
@@ -31,12 +33,12 @@ export const ApiSettings = ({ onSave }: ApiSettingsProps) => {
   return (
     <div className="api-settings-container">
       <div className="api-settings-card">
-        <h1 className="api-settings-title">Настройка Telegram API</h1>
+        <h1 className="api-settings-title">{t('api_setup_title')}</h1>
 
         <p className="api-settings-description">
-          Для работы приложения нужны API credentials от Telegram.
+          {t('api_setup_desc')}
           <br />
-          Получите их на{' '}
+          {t('api_step_open')}{' '}
           <a
             href="https://my.telegram.org"
             target="_blank"
@@ -80,18 +82,18 @@ export const ApiSettings = ({ onSave }: ApiSettingsProps) => {
           {error && <div className="form-error">{error}</div>}
 
           <button type="submit" className="form-button">
-            Сохранить
+            {t('api_save')}
           </button>
         </form>
 
         <div className="api-settings-help">
-          <p className="help-title">Как получить API credentials:</p>
+          <p className="help-title">{t('api_how_to')}:</p>
           <ol className="help-steps">
-            <li>Откройте <a href="https://my.telegram.org" target="_blank" rel="noopener noreferrer">my.telegram.org</a></li>
-            <li>Войдите используя свой номер телефона</li>
-            <li>Перейдите в раздел "API development tools"</li>
-            <li>Создайте новое приложение</li>
-            <li>Скопируйте API ID и API Hash</li>
+            <li>{t('api_step_open')} <a href="https://my.telegram.org" target="_blank" rel="noopener noreferrer">my.telegram.org</a></li>
+            <li>{t('api_step_login')}</li>
+            <li>{t('api_step_navigate')}</li>
+            <li>{t('api_step_create')}</li>
+            <li>{t('api_step_copy')}</li>
           </ol>
         </div>
       </div>

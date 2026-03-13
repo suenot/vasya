@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { Chat } from '../../types/telegram';
 import { ChatFilters } from './ChatFilters';
 import { ChatListItem } from './ChatListItem';
+import { useTranslation } from '../../i18n';
 import './ChatList.css';
 
 interface ChatListProps {
@@ -29,6 +30,7 @@ export const ChatList = memo(({
   onChatClick,
   onContextMenu,
 }: ChatListProps) => {
+  const { t } = useTranslation();
   return (
     <>
       <ChatFilters activeFilter={activeFilter} onFilterChange={onFilterChange} />
@@ -36,7 +38,7 @@ export const ChatList = memo(({
       <div className="chat-list">
         {loading ? (
           <div className="empty-state">
-            <p>Loading...</p>
+            <p>{t('loading')}</p>
           </div>
         ) : error ? (
           <div className="empty-state">
@@ -55,14 +57,14 @@ export const ChatList = memo(({
           ))
         ) : searchQuery.trim() ? (
           <div className="empty-state">
-            <p>Nothing found</p>
+            <p>{t('nothing_found')}</p>
           </div>
         ) : (
           <div className="empty-state" style={{ marginTop: '20px' }}>
             <p>
-              Chats will appear here
+              {t('chats_will_appear')}
               <br />
-              after synchronization
+              {t('after_sync')}
             </p>
           </div>
         )}

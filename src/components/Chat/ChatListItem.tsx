@@ -1,6 +1,7 @@
 import { memo, useCallback } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { Chat } from '../../types/telegram';
+import { useTranslation } from '../../i18n';
 
 interface ChatListItemProps {
   chat: Chat;
@@ -17,6 +18,7 @@ export const ChatListItem = memo(({
   onChatClick,
   onContextMenu,
 }: ChatListItemProps) => {
+  const { t } = useTranslation();
   const handleClick = useCallback(() => {
     onChatClick(chat.id);
   }, [onChatClick, chat.id]);
@@ -63,7 +65,7 @@ export const ChatListItem = memo(({
         </div>
         <div className="chat-info-bottom">
           <div className="chat-preview">
-            {chat.lastMessage || 'No messages'}
+            {chat.lastMessage || t('no_messages')}
           </div>
           {chat.unreadCount > 0 && (
             <div className="unread-count">{chat.unreadCount}</div>

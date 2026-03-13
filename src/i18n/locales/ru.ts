@@ -1,0 +1,238 @@
+import type { TranslationKey } from './en';
+
+export const ru: Record<TranslationKey, string> = {
+  // Common
+  cancel: 'Отмена',
+  close: 'Закрыть',
+  save: 'Сохранить',
+  done: 'Готово',
+  back: 'Назад',
+  search: 'Поиск',
+  loading: 'Загрузка...',
+  error: 'Ошибка',
+  settings: 'Настройки',
+  language: 'Язык',
+
+  // Login
+  login_title: 'Введите номер телефона для входа',
+  login_phone_placeholder: '+7 900 123 45 67',
+  login_phone_error: 'Введите номер телефона',
+  login_sending: 'Отправка...',
+  login_continue: 'Продолжить',
+  login_code_sent: 'Мы отправили код в Telegram на',
+  login_code_placeholder: '_ _ _ _ _ _',
+  login_code_error: 'Введите код подтверждения',
+  login_checking: 'Проверка...',
+  login_sign_in: 'Войти',
+  login_change_number: 'Изменить номер',
+  login_2fa_title: 'У вас включена двухфакторная аутентификация',
+  login_2fa_subtitle: 'Введите пароль облачного хранилища',
+  login_2fa_placeholder: 'Пароль 2FA',
+  login_2fa_error: 'Введите пароль 2FA',
+  login_2fa_confirm: 'Подтвердить',
+  login_2fa_wrong: 'Неверный пароль',
+  login_request_error: 'Ошибка при запросе кода',
+
+  // Account Switcher
+  add_account: 'Добавить аккаунт',
+  log_out: 'Выйти',
+  logging_out: 'Выход...',
+
+  // Main Layout
+  no_active_account: 'Нет активного аккаунта',
+  search_chats: 'Поиск чатов...',
+  close_search: 'Закрыть поиск',
+  select_chat: 'Выберите чат для начала общения',
+
+  // Chat Filters
+  filter_contacts: 'Контакты',
+  filter_chats: 'Чаты',
+  filter_favorites: 'Избранное',
+
+  // Chat List
+  nothing_found: 'Ничего не найдено',
+  chats_will_appear: 'Чаты появятся здесь',
+  after_sync: 'после синхронизации',
+  no_messages: 'Нет сообщений',
+
+  // Chat Header
+  status_online: 'в сети',
+  status_connecting: 'подключение...',
+  status_reconnecting: 'переподключение...',
+  status_offline: 'не в сети',
+  previous: 'Предыдущий',
+  next: 'Следующий',
+  close_search_header: 'Закрыть поиск',
+  search_messages: 'Поиск сообщений',
+  more_options: 'Ещё',
+  info: 'Инфо',
+  mute: 'Без звука',
+  unmute: 'Со звуком',
+  delete_and_leave: 'Удалить и выйти',
+  delete_confirm: 'Вы уверены, что хотите удалить этот чат и выйти? Это действие нельзя отменить.',
+
+  // Chat Context Menu
+  remove_from_favorites: 'Удалить из избранного',
+  add_to_favorites: 'Добавить в избранное',
+
+  // Chat Info Panel
+  chat_info: 'Информация о чате',
+  chat_type_user: 'Пользователь',
+  chat_type_group: 'Группа',
+  chat_type_channel: 'Канал',
+  details: 'Подробности',
+  type: 'Тип',
+  username: 'Имя пользователя',
+  id: 'ID',
+
+  // Message Input
+  drop_to_attach: 'Перетащите файл для прикрепления',
+  add_caption: 'Добавить подпись...',
+  write_message: 'Написать сообщение...',
+  send_enter: 'Отправить (Enter)',
+
+  // Settings - General
+  general_settings: 'Основные настройки',
+  appearance: 'Внешний вид',
+  theme: 'Тема',
+  system_default: 'Системная',
+  light: 'Светлая',
+  dark: 'Тёмная',
+  interface: 'Интерфейс',
+  interface_scale: 'Масштаб интерфейса',
+  message_text_size: 'Размер текста сообщений',
+  medium: 'Средний',
+  notifications: 'Уведомления',
+  notification_sound: 'Звук уведомлений',
+  message_preview: 'Предпросмотр сообщений',
+
+  // Settings - Privacy
+  privacy_security: 'Конфиденциальность и безопасность',
+  privacy: 'Конфиденциальность',
+  phone_number: 'Номер телефона',
+  my_contacts: 'Мои контакты',
+  last_seen: 'Последний раз в сети',
+  everybody: 'Все',
+  profile_photo: 'Фото профиля',
+  security: 'Безопасность',
+  active_sessions: 'Активные сессии',
+  two_step_verification: 'Двухэтапная аутентификация',
+
+  // Settings - Data
+  data_storage: 'Данные и хранилище',
+  storage_usage: 'Использование хранилища',
+  manage_storage: 'Управление хранилищем',
+  clear_cache: 'Очистить кэш',
+  network_usage: 'Использование сети',
+  auto_media_download: 'Автозагрузка медиа',
+  photos: 'Фото',
+  videos: 'Видео',
+  files: 'Файлы',
+
+  // Settings - Downloads
+  downloads: 'Загрузки',
+  status: 'Статус',
+  active: 'Активные',
+  queued: 'В очереди',
+  completed: 'Завершённые',
+  failed: 'Ошибки',
+  downloading: 'Загрузка',
+  queue: 'Очередь',
+  no_downloads: 'Загрузок пока нет',
+  all_downloads_completed: 'Все загрузки завершены',
+
+  // Settings - STT
+  voice_stt: 'Распознавание голоса (STT)',
+  provider: 'Провайдер',
+  deepgram_cloud: 'Deepgram (Облако)',
+  deepgram_desc: 'Быстрое и точное распознавание. Требуется интернет. API-ключ встроен в приложение.',
+  whisper_local: 'Whisper (Локально)',
+  whisper_desc: 'Полностью офлайн. Приватное. Требуется загрузка модели.',
+  whisper_warning: '~1 ГБ ОЗУ при использовании (может быть критично для телефонов)',
+  recognition_language: 'Язык распознавания',
+  lang_russian: 'Русский',
+  lang_english: 'Английский',
+  lang_ukrainian: 'Украинский',
+  lang_german: 'Немецкий',
+  lang_french: 'Французский',
+  lang_spanish: 'Испанский',
+  lang_auto: 'Авто (мультиязычный)',
+  whisper_models: 'Модели Whisper',
+  model_active: '(активна)',
+  downloaded: 'Загружена',
+  select: 'Выбрать',
+  download: 'Скачать',
+  downloading_model: 'Загрузка...',
+
+  // Settings - Hotkeys
+  hotkeys: 'Горячие клавиши',
+  reset_defaults: 'Сбросить по умолчанию',
+  app_shortcuts: 'Горячие клавиши приложения',
+  press_keys: 'Нажмите клавиши...',
+
+  // Settings - Nav
+  nav_general: 'Основные',
+  nav_privacy: 'Конфиденциальность',
+  nav_data: 'Данные и хранилище',
+  nav_downloads: 'Загрузки',
+  nav_voice: 'Голос (STT)',
+  nav_hotkeys: 'Горячие клавиши',
+  nav_folders: 'Папки чатов',
+  nav_devices: 'Устройства',
+  nav_language: 'Язык',
+  feature_in_dev: 'Функция в разработке',
+
+  // Profile Settings
+  edit_profile: 'Редактировать профиль',
+  upload_photo: 'Загрузить фото',
+  first_name: 'Имя',
+  first_name_placeholder: 'Введите имя',
+  last_name: 'Фамилия',
+  last_name_placeholder: 'Введите фамилию',
+  bio: 'О себе',
+  bio_placeholder: 'Добавьте несколько слов о себе',
+  username_label: 'Имя пользователя',
+  username_hint: 'Можно использовать a-z, 0-9 и подчёркивания. Минимум 5 символов.',
+  information: 'Информация',
+  phone: 'Телефон',
+  not_set: 'Не указан',
+  account_id: 'ID аккаунта',
+
+  // Error Boundary
+  something_went_wrong: 'Что-то пошло не так',
+  try_again: 'Попробовать снова',
+
+  // Voice Message
+  stt_loading_model: 'Загрузка модели...',
+  stt_model_loaded: 'Модель загружена',
+  stt_converting_audio: 'Конвертация аудио...',
+  stt_ffmpeg_converting: 'Конвертация через ffmpeg...',
+  stt_audio_ready: 'Аудио готово',
+  stt_transcribing: 'Распознавание...',
+  stt_extracting_text: 'Извлечение текста...',
+  stt_done: 'Готово',
+  stt_transcribed: 'Распознано',
+  stt_transcribe: 'Распознать текст',
+  stt_processing: 'Обработка...',
+
+  // Media Attachment
+  link_preview: 'Предпросмотр ссылки',
+  downloading_type: 'Загрузка {type}...',
+  tap_to_download: 'Нажмите для загрузки',
+  loading_type: 'Загрузка {type}...',
+  failed_to_load: '{type} (не удалось загрузить)',
+
+  // API Settings
+  api_fill_fields: 'Заполните все поля',
+  api_id_number: 'API ID должен быть числом',
+  api_setup_title: 'Настройка Telegram API',
+  api_setup_desc: 'Для работы приложения нужны API credentials от Telegram',
+  api_how_to: 'Как получить API credentials',
+  api_step_open: 'Откройте',
+  api_step_login: 'Войдите используя свой номер телефона',
+  api_step_navigate: 'Перейдите в раздел \'API development tools\'',
+  api_step_create: 'Создайте новое приложение',
+  api_step_copy: 'Скопируйте API ID и API Hash',
+  api_save: 'Сохранить',
+  api_save_error: 'Ошибка при сохранении API credentials',
+};

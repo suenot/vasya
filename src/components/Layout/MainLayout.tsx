@@ -12,9 +12,11 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useTauriEvent } from '../../hooks/useTauriEvent';
 import { useHotkeysStore } from '../../store/hotkeysStore';
 import { Chat } from '../../types/telegram';
+import { useTranslation } from '../../i18n';
 import './MainLayout.css';
 
 export const MainLayout = () => {
+  const { t } = useTranslation();
   const activeAccountId = useAccountsStore((s) => s.activeAccountId);
   const accounts = useAccountsStore((s) => s.accounts);
   const activeAccount = useMemo(
@@ -317,7 +319,7 @@ export const MainLayout = () => {
                       setSearchQuery('');
                     }
                   }}
-                  title={isSearchExpanded ? "Close Search" : "Search"}
+                  title={isSearchExpanded ? t('close_search') : t('search')}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     {isSearchExpanded ? (
@@ -337,14 +339,14 @@ export const MainLayout = () => {
                   ref={searchInputRef}
                   type="text"
                   className="inline-search-input"
-                  placeholder="Search chats..."
+                  placeholder={t('search_chats')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onBlur={() => { if (!searchQuery) setIsSearchExpanded(false); }}
                 />
               </div>
               {!isSearchExpanded && (
-                <button className="icon-button" title="Settings" onClick={() => setShowSettings(true)}>
+                <button className="icon-button" title={t('settings')} onClick={() => setShowSettings(true)}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z" />
                     <circle cx="12" cy="12" r="3" />
@@ -393,7 +395,7 @@ export const MainLayout = () => {
           ) : (
             <div className="empty-chat">
               <div className="empty-chat-bubble">
-                Select a chat to start messaging
+                {t('select_chat')}
               </div>
             </div>
           )}

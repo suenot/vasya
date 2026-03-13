@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { useAccountsStore } from '../../store/accountsStore';
 import { useAuthStore } from '../../store/authStore';
+import { useTranslation } from '../../i18n';
 import './AccountSwitcher.css';
 
 interface ContextMenu {
@@ -11,6 +12,7 @@ interface ContextMenu {
 }
 
 export const AccountSwitcher = () => {
+  const { t } = useTranslation();
   const { accounts, activeAccountId, setActiveAccount, clearActiveAccount, removeAccount } = useAccountsStore();
   const [avatars, setAvatars] = useState<Record<string, string>>({});
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
@@ -80,7 +82,7 @@ export const AccountSwitcher = () => {
         <button
           className="account-circle add-account"
           onClick={handleAddAccount}
-          title="Add account"
+          title={t('add_account')}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -118,7 +120,7 @@ export const AccountSwitcher = () => {
           className="account-circle add-account"
           onClick={handleAddAccount}
           style={{ '--index': accounts.length } as React.CSSProperties}
-          title="Add account"
+          title={t('add_account')}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -142,7 +144,7 @@ export const AccountSwitcher = () => {
               <polyline points="16 17 21 12 16 7" />
               <line x1="21" y1="12" x2="9" y2="12" />
             </svg>
-            Log out
+            {t('log_out')}
           </button>
         </div>
       )}

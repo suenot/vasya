@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { readImage } from '@tauri-apps/plugin-clipboard-manager';
 import { useMessagesStore } from '../../store/messagesStore';
 import { Message } from '../../types/telegram';
+import { useTranslation } from '../../i18n';
 import './MessageInput.css';
 
 interface MessageInputProps {
@@ -12,6 +13,7 @@ interface MessageInputProps {
 }
 
 export const MessageInput = ({ accountId, chatId, onMessageSent }: MessageInputProps) => {
+  const { t } = useTranslation();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
@@ -176,7 +178,7 @@ export const MessageInput = ({ accountId, chatId, onMessageSent }: MessageInputP
       onDragLeave={handleDragLeave}
     >
       {dragOver && (
-        <div className="drop-overlay">Drop file to attach</div>
+        <div className="drop-overlay">{t('drop_to_attach')}</div>
       )}
       {mediaPreview && (
         <div className="media-preview-container">
@@ -196,7 +198,7 @@ export const MessageInput = ({ accountId, chatId, onMessageSent }: MessageInputP
       <div className="message-input-container">
         <textarea
           className="message-input"
-          placeholder={mediaPreview ? "Add a caption..." : "Write a message..."}
+          placeholder={mediaPreview ? t('add_caption') : t('write_message')}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -209,7 +211,7 @@ export const MessageInput = ({ accountId, chatId, onMessageSent }: MessageInputP
           className="send-button"
           onClick={handleSend}
           disabled={(!text.trim() && !mediaFile) || sending}
-          title="Send (Enter)"
+          title={t('send_enter')}
         >
           {sending ? (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="spin">

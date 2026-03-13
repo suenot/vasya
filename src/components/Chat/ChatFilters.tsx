@@ -1,24 +1,27 @@
+import { useTranslation, TranslationKey } from '../../i18n';
+
 interface ChatFiltersProps {
   activeFilter: 'contacts' | 'chats' | 'favorites';
   onFilterChange: (filter: 'contacts' | 'chats' | 'favorites') => void;
 }
 
-const FILTERS: { key: ChatFiltersProps['activeFilter']; label: string }[] = [
-  { key: 'contacts', label: 'Contacts' },
-  { key: 'chats', label: 'Chats' },
-  { key: 'favorites', label: 'Favorites' },
+const FILTER_KEYS: { key: ChatFiltersProps['activeFilter']; labelKey: TranslationKey }[] = [
+  { key: 'contacts', labelKey: 'filter_contacts' },
+  { key: 'chats', labelKey: 'filter_chats' },
+  { key: 'favorites', labelKey: 'filter_favorites' },
 ];
 
 export const ChatFilters = ({ activeFilter, onFilterChange }: ChatFiltersProps) => {
+  const { t } = useTranslation();
   return (
     <div className="chat-filters">
-      {FILTERS.map(({ key, label }) => (
+      {FILTER_KEYS.map(({ key, labelKey }) => (
         <button
           key={key}
           className={`filter-button ${activeFilter === key ? 'active' : ''}`}
           onClick={() => onFilterChange(key)}
         >
-          {label}
+          {t(labelKey)}
         </button>
       ))}
     </div>

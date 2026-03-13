@@ -4,6 +4,7 @@ import { Chat, Message } from '../../types/telegram';
 import { useConnectionStore } from '../../store/connectionStore';
 import { useMuteStore } from '../../store/muteStore';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useTranslation, TranslationKey } from '../../i18n';
 
 interface ChatHeaderProps {
   chat: Chat | null;
@@ -14,14 +15,15 @@ interface ChatHeaderProps {
   onBack?: () => void;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  connected: 'online',
-  connecting: 'connecting...',
-  reconnecting: 'reconnecting...',
-  disconnected: 'offline',
+const STATUS_KEYS: Record<string, TranslationKey> = {
+  connected: 'status_online',
+  connecting: 'status_connecting',
+  reconnecting: 'status_reconnecting',
+  disconnected: 'status_offline',
 };
 
 export const ChatHeader = ({ chat, accountId, onScrollToMessage, onShowInfo, onDeleteChat, onBack }: ChatHeaderProps) => {
+  const { t } = useTranslation();
   const connectionStatus = useConnectionStore((s) => s.status);
   const isMuted = useMuteStore((s) => s.isMuted);
   const toggleMute = useMuteStore((s) => s.toggleMute);
@@ -133,10 +135,10 @@ export const ChatHeader = ({ chat, accountId, onScrollToMessage, onShowInfo, onD
         {showSearch ? (
           <div className="header-search">
             <div className="header-search-nav">
-              <button className="icon-button icon-button-sm" onClick={() => navigateResult('prev')} title="Previous">
+              <button className="icon-button icon-button-sm" onClick={() => navigateResult('prev')} title={t('previous')}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15" /></svg>
               </button>
-              <button className="icon-button icon-button-sm" onClick={() => navigateResult('next')} title="Next">
+              <button className="icon-button icon-button-sm" onClick={() => navigateResult('next')} title={t('next')}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
               </button>
             </div>
@@ -144,7 +146,7 @@ export const ChatHeader = ({ chat, accountId, onScrollToMessage, onShowInfo, onD
               ref={searchInputRef}
               type="text"
               className="header-search-input"
-              placeholder="Search"
+              placeholder={t('search')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleSearchKeyDown}
@@ -158,7 +160,7 @@ export const ChatHeader = ({ chat, accountId, onScrollToMessage, onShowInfo, onD
                 <span className="search-status">0</span>
               ) : null}
             </div>
-            <button className="icon-button" onClick={toggleSearch} title="Close search">
+            <button className="icon-button" onClick={toggleSearch} title={t('close_search_header')}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
           </div>
@@ -174,19 +176,19 @@ export const ChatHeader = ({ chat, accountId, onScrollToMessage, onShowInfo, onD
               <div className="content-header-info">
                 <h3>{chat.title}</h3>
                 <span className={`status status-${connectionStatus}`}>
-                  {STATUS_LABELS[connectionStatus] || connectionStatus}
+                  {STATUS_KEYS[connectionStatus] ? t(STATUS_KEYS[connectionStatus]) : connectionStatus}
                 </span>
               </div>
             </div>
             <div className="content-header-actions">
-              <button className="icon-button" title="Search messages" onClick={toggleSearch}>
+              <button className="icon-button" title={t('search_messages')} onClick={toggleSearch}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8" />
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
               </button>
               <div style={{ position: 'relative' }} ref={menuRef}>
-                <button className="icon-button" title="More options" onClick={() => setShowMenu((p) => !p)}>
+                <button className="icon-button" title={t('more_options')} onClick={() => setShowMenu((p) => !p)}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="6" r="1" fill="currentColor" stroke="none" />
                     <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
@@ -197,7 +199,7 @@ export const ChatHeader = ({ chat, accountId, onScrollToMessage, onShowInfo, onD
                   <div className="chat-options-menu">
                     <button className="chat-options-menu-item" onClick={() => { onShowInfo?.(); setShowMenu(false); }}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
-                      Info
+                      {t('info')}
                     </button>
                     <button className="chat-options-menu-item" onClick={() => { if (chat) toggleMute(chat.id); setShowMenu(false); }}>
                       {chat && isMuted(chat.id) ? (
@@ -205,12 +207,12 @@ export const ChatHeader = ({ chat, accountId, onScrollToMessage, onShowInfo, onD
                       ) : (
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 5L6 9H2v6h4l5 4V5z" /><line x1="23" y1="9" x2="17" y2="15" /><line x1="17" y1="9" x2="23" y2="15" /></svg>
                       )}
-                      {chat && isMuted(chat.id) ? 'Unmute' : 'Mute'}
+                      {chat && isMuted(chat.id) ? t('unmute') : t('mute')}
                     </button>
                     <div className="chat-options-menu-separator" />
                     <button className="chat-options-menu-item danger" onClick={() => { setShowDeleteConfirm(true); setShowMenu(false); }}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
-                      Delete and Leave
+                      {t('delete_and_leave')}
                     </button>
                   </div>
                 )}
@@ -222,11 +224,11 @@ export const ChatHeader = ({ chat, accountId, onScrollToMessage, onShowInfo, onD
       {showDeleteConfirm && chat && (
         <div className="confirm-dialog-overlay" onClick={() => setShowDeleteConfirm(false)}>
           <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
-            <h3>Delete and Leave</h3>
-            <p>Are you sure you want to delete this chat and leave? This action cannot be undone.</p>
+            <h3>{t('delete_and_leave')}</h3>
+            <p>{t('delete_confirm')}</p>
             <div className="confirm-dialog-actions">
               <button className="confirm-dialog-btn cancel" onClick={() => setShowDeleteConfirm(false)}>
-                Cancel
+                {t('cancel')}
               </button>
               <button className="confirm-dialog-btn danger" onClick={async () => {
                 try {
@@ -237,7 +239,7 @@ export const ChatHeader = ({ chat, accountId, onScrollToMessage, onShowInfo, onD
                 }
                 setShowDeleteConfirm(false);
               }}>
-                Delete and Leave
+                {t('delete_and_leave')}
               </button>
             </div>
           </div>
