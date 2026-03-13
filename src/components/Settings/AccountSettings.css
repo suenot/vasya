@@ -565,3 +565,27 @@ input:checked+.toggle-slider:before {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Sidebar footer with logout */
+.settings-sidebar-footer {
+  padding: 8px;
+  border-top: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.settings-nav-item.logout-button {
+  color: #e74c3c;
+}
+
+.settings-nav-item.logout-button .settings-nav-icon {
+  color: #e74c3c;
+}
+
+.settings-nav-item.logout-button:hover {
+  background-color: rgba(231, 76, 60, 0.1);
+}
+
+.settings-nav-item.logout-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

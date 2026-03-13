@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { ProfileSettings } from './ProfileSettings';
 import { useAccountsStore } from '../../store/accountsStore';
+import { useAuthStore } from '../../store/authStore';
 import { useThemeStore, ThemeSetting } from '../../store/themeStore';
 import { useDownloadStore } from '../../store/downloadStore';
 import { useSttStore, SttProvider } from '../../store/sttStore';
@@ -14,7 +16,8 @@ interface AccountSettingsProps {
 type SettingsSection = 'general' | 'privacy' | 'data' | 'downloads' | 'stt' | 'hotkeys' | 'folders' | 'devices' | 'language';
 
 export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
-  const { getActiveAccount } = useAccountsStore();
+  const { getActiveAccount, accounts, removeAccount, setActiveAccount, clearActiveAccount } = useAccountsStore();
+  const [loggingOut, setLoggingOut] = useState(false);
   const { themeSetting, setThemeSetting } = useThemeStore();
   const [activeSection, setActiveSection] = useState<SettingsSection>('general');
   const [showProfileEdit, setShowProfileEdit] = useState(false);
@@ -67,6 +70,29 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
 
   const handleThemeChange = (newTheme: ThemeSetting) => {
     setThemeSetting(newTheme);
+  };
+
+  const handleLogout = async () => {
+    const account = getActiveAccount();
+    if (!account || loggingOut) return;
+
+    setLoggingOut(true);
+    try {
+      await invoke('logout', { accountId: account.id });
+      removeAccount(account.id);
+      const remaining = accounts.filter(a => a.id !== account.id);
+      if (remaining.length > 0) {
+        setActiveAccount(remaining[0].id);
+      } else {
+        useAuthStore.getState().logout();
+        clearActiveAccount();
+      }
+      onClose();
+    } catch (err) {
+      console.error('Logout failed:', err);
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   const renderGeneralSettings = () => (
@@ -680,6 +706,23 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
                 Language
               </button>
             </nav>
+
+            <div className="settings-sidebar-footer">
+              <button
+                className="settings-nav-item logout-button"
+                onClick={handleLogout}
+                disabled={loggingOut}
+              >
+                <span className="settings-nav-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                </span>
+                {loggingOut ? 'Logging out...' : 'Log out'}
+              </button>
+            </div>
           </aside>
 
           {/* Main Content */}
