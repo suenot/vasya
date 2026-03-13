@@ -134,6 +134,34 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
+.login-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.login-input-code {
+  text-align: center;
+  letter-spacing: 8px;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.login-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.login-button:disabled:hover {
+  transform: none;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.login-button-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .login-error {
   color: #ff5252;
   font-size: 14px;
