@@ -168,7 +168,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
           <div className="settings-item-label">
             <div className="settings-item-title">{t('theme')}</div>
             <div className="settings-item-description">
-              {themeSetting === 'system' ? t('system_default') : themeSetting === 'light' ? t('light') : t('dark')}
+            {themeSetting === 'system' ? t('system_default') : themeSetting === 'light' ? t('light') : themeSetting === 'dark' ? t('dark') : t('blue')}
             </div>
           </div>
         </div>
@@ -193,6 +193,12 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
             <input type="radio" name="theme" value="dark" checked={themeSetting === 'dark'} onChange={(e) => handleThemeChange(e.target.value as ThemeSetting)} />
             <div className="theme-preview dark"></div>
             <span>{t('dark')}</span>
+          </label>
+
+          <label className={`theme-option ${themeSetting === 'blue' ? 'active' : ''}`}>
+            <input type="radio" name="theme" value="blue" checked={themeSetting === 'blue'} onChange={(e) => handleThemeChange(e.target.value as ThemeSetting)} />
+            <div className="theme-preview blue"></div>
+            <span>{t('blue')}</span>
           </label>
         </div>
       </div>

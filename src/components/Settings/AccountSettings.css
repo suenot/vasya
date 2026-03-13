@@ -330,7 +330,7 @@ input:checked+.toggle-slider:before {
 /* Опции темы */
 .theme-options {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   padding: 16px 0;
 }
@@ -381,6 +381,10 @@ input:checked+.toggle-slider:before {
 
 .theme-preview.dark, .theme-preview-half.dark {
   background: #1A1817;
+}
+
+.theme-preview.blue {
+  background: #0F171E;
 }
 
 .theme-option span {

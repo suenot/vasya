@@ -72,6 +72,33 @@ textarea {
   --scroll-thumb: #45403C;
 }
 
+:root[data-theme="blue"] {
+  /* Telegram Blue Theme (from landing page) */
+  --font-serif: var(--font-family); /* Telegram style doesn't use serif */
+  --bg-primary: #0F171E;
+  --bg-secondary: #17212B;
+  --bg-tertiary: #1B2733;
+  --sidebar-bg: #17212B;
+  --sidebar-hover: #232E3C;
+  --sidebar-active: #2B5278;
+  --sidebar-active-text: #FFFFFF;
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #B0C4DE;
+  --text-tertiary: #92A8C1;
+
+  --accent-color: #3390EC;
+  --accent-hover: #4BA3FF;
+
+  --border-color: #0F171E;
+
+  --message-out-bg: #2B5278;
+  --message-in-bg: #182533;
+  --message-shadow: rgba(16, 22, 26, 0.2);
+
+  --scroll-thumb: #3A4B5D;
+}
+
 body {
   margin: 0;
   padding: 0;

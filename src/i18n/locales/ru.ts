@@ -98,6 +98,7 @@ export const ru: Record<TranslationKey, string> = {
   system_default: 'Системная',
   light: 'Светлая',
   dark: 'Тёмная',
+  blue: 'Синяя (Telegram)',
   interface: 'Интерфейс',
   interface_scale: 'Масштаб интерфейса',
   message_text_size: 'Размер текста сообщений',

@@ -65,11 +65,13 @@ function App() {
   // Применяем тему при монтировании и изменении настроек
   useEffect(() => {
     const effectiveTheme = themeSetting === 'system' ? systemTheme : themeSetting;
-    setEffectiveTheme(effectiveTheme);
+    setEffectiveTheme(effectiveTheme as any);
 
     // Устанавливаем data-theme атрибут на :root
     if (effectiveTheme === 'dark') {
       document.documentElement.setAttribute('data-theme', 'dark');
+    } else if (effectiveTheme === 'blue') {
+      document.documentElement.setAttribute('data-theme', 'blue');
     } else {
       document.documentElement.removeAttribute('data-theme');
     }

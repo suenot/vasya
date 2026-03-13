@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type ThemeSetting = 'system' | 'light' | 'dark';
-export type ThemeMode = 'light' | 'dark';
+export type ThemeSetting = 'system' | 'light' | 'dark' | 'blue';
+export type ThemeMode = 'light' | 'dark' | 'blue';
 
 interface ThemeState {
   // Настройка темы (что выбрал пользователь)

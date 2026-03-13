@@ -96,6 +96,7 @@ export const en = {
   system_default: 'System Default',
   light: 'Light',
   dark: 'Dark',
+  blue: 'Blue (Telegram)',
   interface: 'Interface',
   interface_scale: 'Interface Scale',
   message_text_size: 'Message Text Size',
