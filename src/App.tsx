@@ -87,7 +87,7 @@ function App() {
       setApiCredentials(apiId, apiHash);
     } catch (err) {
       console.error('Failed to update API credentials:', err);
-      alert('Ошибка при сохранении API credentials');
+      alert(`Ошибка при сохранении API credentials: ${err}`);
     }
   };
 

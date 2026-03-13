@@ -1,15 +1,18 @@
 .message-input-wrapper {
-  background-color: var(--bg-secondary);
-  border-top: 1px solid var(--border-color);
+  background-color: transparent;
   display: flex;
   flex-direction: column;
   position: relative;
   padding-bottom: env(safe-area-inset-bottom);
+  padding: 0 16px 24px 16px;
+  max-width: 768px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .message-input-wrapper.drag-over {
   border-color: var(--accent-color);
-  background-color: color-mix(in srgb, var(--accent-color) 5%, var(--bg-secondary));
+  background-color: color-mix(in srgb, var(--accent-color) 2%, transparent);
 }
 
 .drop-overlay {
@@ -18,9 +21,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+  background: color-mix(in srgb, var(--accent-color) 5%, transparent);
   border: 2px dashed var(--accent-color);
-  border-radius: 8px;
+  border-radius: 16px;
   color: var(--accent-color);
   font-size: 14px;
   font-weight: 500;
@@ -30,30 +33,34 @@
 
 .message-input-container {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   padding: 12px 16px;
   align-items: flex-end;
+  background-color: var(--bg-secondary);
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.02);
 }
 
 .message-input {
   flex: 1;
-  min-height: 40px;
-  max-height: 120px;
-  padding: 10px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background-color: var(--bg-primary);
+  min-height: 24px;
+  max-height: 200px;
+  padding: 4px 0;
+  border: none;
+  border-radius: 0;
+  background-color: transparent;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1.5;
   font-family: inherit;
   resize: none;
   overflow-y: auto;
-  transition: border-color 0.2s;
 }
 
 .message-input:focus {
   outline: none;
-  border-color: var(--accent-color);
+  border-color: transparent;
 }
 
 .message-input:disabled {
@@ -62,7 +69,7 @@
 }
 
 .message-input::placeholder {
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
 }
 
 .send-button {

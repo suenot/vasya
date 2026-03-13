@@ -10,8 +10,9 @@ fn main() {
     // Try loading from .env file first (for local dev)
     let mut from_file = std::collections::HashMap::new();
     let env_path = std::path::Path::new("../.env");
+    // Always watch .env so build reruns when it appears or changes
+    println!("cargo:rerun-if-changed=../.env");
     if env_path.exists() {
-        println!("cargo:rerun-if-changed=../.env");
         if let Ok(contents) = std::fs::read_to_string(env_path) {
             for line in contents.lines() {
                 let line = line.trim();

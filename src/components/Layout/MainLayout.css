@@ -245,14 +245,13 @@
   background: var(--sidebar-active);
 }
 
-.chat-item.selected .chat-title,
-.chat-item.selected .chat-preview,
-.chat-item.selected .chat-time {
-  color: var(--sidebar-active-text);
+.chat-item.selected .chat-title {
+  color: var(--text-primary);
 }
 
-.chat-item.selected .chat-preview {
-  opacity: 0.9;
+.chat-item.selected .chat-preview,
+.chat-item.selected .chat-time {
+  color: var(--text-secondary);
 }
 
 .chat-avatar {
@@ -367,15 +366,20 @@
 }
 
 .chat-item.selected .unread-count {
-  background: white;
-  color: var(--sidebar-active);
+  background: var(--accent-color);
+  color: white;
 }
 
-.chat-item.selected .preview-sender,
-.chat-item.selected .pinned-icon,
+.chat-item.selected .preview-sender {
+  color: var(--accent-color);
+}
+
+.chat-item.selected .pinned-icon {
+  opacity: 0.8;
+}
+
 .chat-item.selected .status-ticks {
-  color: white;
-  opacity: 1;
+  color: #4fae4e;
 }
 
 /* Content area */
@@ -383,7 +387,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   position: relative;
 }
 
@@ -394,16 +398,12 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: url('https://web.telegram.org/a/chat-bg.pattern.200fdfb5f9035249590e.png');
-  background-repeat: repeat;
-  background-size: 400px;
-  opacity: 0.05;
+  background: var(--bg-primary);
   pointer-events: none;
 }
 
 :root[data-theme="dark"] .content-bg {
-  opacity: 0.03;
-  filter: invert(1);
+  background: var(--bg-primary);
 }
 
 .content-header {
@@ -459,15 +459,14 @@
 }
 
 .empty-chat-bubble {
-  background: rgba(0, 0, 0, 0.4);
-  color: white;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 14px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-family: var(--font-serif);
+  font-size: 20px;
 }
 
 :root[data-theme="dark"] .empty-chat-bubble {
-  background: rgba(255, 255, 255, 0.1);
+  background: transparent;
 }
 
 /* Context Menu */

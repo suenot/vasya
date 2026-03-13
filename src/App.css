@@ -14,61 +14,62 @@ textarea {
 
 :root {
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-serif: 'Newsreader', Georgia, serif;
 
-  /* Telegram Light Theme Colors */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f4f4f5;
-  --bg-tertiary: #f1f1f1;
-  --sidebar-bg: #ffffff;
-  --sidebar-hover: #f4f4f5;
-  --sidebar-active: #3390ec;
-  --sidebar-active-text: #ffffff;
+  /* Anthropic Light Theme Colors */
+  --bg-primary: #FDFBFA;
+  --bg-secondary: #F3EFE9;
+  --bg-tertiary: #EBE4D9;
+  --sidebar-bg: #FDFBFA;
+  --sidebar-hover: #F3EFE9;
+  --sidebar-active: #F3EFE9;
+  --sidebar-active-text: #1C1A1A;
 
-  --text-primary: #000000;
-  --text-secondary: #707579;
-  --text-tertiary: #aaaaaa;
+  --text-primary: #1C1A1A;
+  --text-secondary: #5C5855;
+  --text-tertiary: #A69C94;
 
-  --accent-color: #3390ec;
-  --accent-hover: #2b7cc9;
+  --accent-color: #DA7756;
+  --accent-hover: #C56648;
 
-  --border-color: #dfe1e5;
+  --border-color: #E6DFDA;
 
-  --message-out-bg: #eeffde;
-  --message-in-bg: #ffffff;
-  --message-shadow: rgba(114, 114, 114, 0.16);
+  --message-out-bg: #F3EFE9;
+  --message-in-bg: #FFFFFF;
+  --message-shadow: rgba(0, 0, 0, 0.04);
 
-  --scroll-thumb: #c1c1c1;
+  --scroll-thumb: #D1CAC3;
   --scroll-track: transparent;
 
   font-family: var(--font-family);
-  font-size: 14px;
-  line-height: normal;
+  font-size: 14.5px;
+  line-height: 1.5;
 }
 
 :root[data-theme="dark"] {
-  /* Telegram Dark Theme Colors */
-  --bg-primary: #0f171e;
-  --bg-secondary: #17212b;
-  --bg-tertiary: #1b2733;
-  --sidebar-bg: #17212b;
-  --sidebar-hover: #232e3c;
-  --sidebar-active: #2b5278;
-  --sidebar-active-text: #ffffff;
+  /* Anthropic Dark Theme Colors */
+  --bg-primary: #1A1817;
+  --bg-secondary: #221F1E;
+  --bg-tertiary: #2D2826;
+  --sidebar-bg: #1A1817;
+  --sidebar-hover: #2D2826;
+  --sidebar-active: #2D2826;
+  --sidebar-active-text: #EDEBE8;
 
-  --text-primary: #ffffff;
-  --text-secondary: #7f91a4;
-  --text-tertiary: #607990;
+  --text-primary: #EDEBE8;
+  --text-secondary: #A6A09C;
+  --text-tertiary: #6E6966;
 
-  --accent-color: #5288c1;
-  --accent-hover: #60a0e0;
+  --accent-color: #DA7756;
+  --accent-hover: #E8896A;
 
-  --border-color: #0f171e;
+  --border-color: #36322F;
 
-  --message-out-bg: #2b5278;
-  --message-in-bg: #182533;
-  --message-shadow: rgba(16, 22, 26, 0.2);
+  --message-out-bg: #2D2826;
+  --message-in-bg: #221F1E;
+  --message-shadow: rgba(0, 0, 0, 0.2);
 
-  --scroll-thumb: #3a4b5d;
+  --scroll-thumb: #45403C;
 }
 
 body {

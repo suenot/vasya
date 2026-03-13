@@ -13,16 +13,14 @@
   min-height: 0;
   padding: 0 16px;
   background: transparent;
-  /* Wallpaper is in MainLayout */
 }
 
 .messages-list {
-  padding: 16px 0;
+  padding: 32px 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  /* Tight gap for Telegram-like feel */
-  max-width: 720px;
+  gap: 24px;
+  max-width: 768px;
   width: 100%;
   margin: 0 auto;
 }
@@ -30,6 +28,7 @@
 .message {
   display: flex;
   margin-bottom: 2px;
+  width: 100%;
 }
 
 .message.outgoing {
@@ -52,53 +51,52 @@
 }
 
 .message-bubble {
-  padding: 6px 12px 6px 14px;
-  border-radius: 12px;
+  padding: 12px 18px;
+  border-radius: 16px;
   word-wrap: break-word;
   word-break: break-word;
   overflow-wrap: break-word;
-  box-shadow: 0 1px 2px var(--message-shadow);
   position: relative;
   display: flex;
   flex-direction: column;
+  box-shadow: none;
+  border: 1px solid var(--border-color);
+  font-family: var(--font-family);
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 .message.outgoing .message-bubble {
-  background: var(--message-out-bg);
+  background: var(--bg-secondary);
   color: var(--text-primary);
-  border-bottom-right-radius: 4px;
+  border-color: transparent;
 }
 
 .message.incoming .message-bubble {
-  background: var(--message-in-bg);
+  background: transparent;
   color: var(--text-primary);
-  border-bottom-left-radius: 4px;
 }
 
 .message-text {
-  line-height: 1.5;
-  font-size: 15px;
-  margin-right: 40px;
-  /* Space for time */
+  /* No special right margin needed for inline time if time goes below */
 }
 
 .message-meta {
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
   align-self: flex-end;
-  margin-top: -8px;
-  margin-left: 8px;
+  margin-top: 4px;
+  opacity: 0.8;
   pointer-events: none;
   user-select: none;
 }
 
 .message.outgoing .message-meta {
-  color: #4fae4e;
-  /* Telegram green for checks */
+  color: var(--text-tertiary);
 }
 
 :root[data-theme="dark"] .message.outgoing .message-meta {
-  color: #a0c3ff;
+  color: var(--text-tertiary);
 }
 
 .messages-loading,
