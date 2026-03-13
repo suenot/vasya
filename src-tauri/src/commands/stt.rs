@@ -94,9 +94,9 @@ fn save_settings(app: &AppHandle, settings: &SttSettings) -> Result<(), String> 
 #[tauri::command]
 pub async fn get_stt_settings(app: AppHandle) -> Result<SttSettings, String> {
     let mut settings = load_settings(&app);
-    // Fill in default Deepgram API key from env if not set
+    // Fill in default Deepgram API key from compile-time env if not set
     if settings.deepgram_api_key.is_none() {
-        settings.deepgram_api_key = std::env::var("DEEPGRAM_API_KEY").ok();
+        settings.deepgram_api_key = option_env!("DEEPGRAM_API_KEY").map(|s| s.to_string());
     }
     Ok(settings)
 }
@@ -199,7 +199,7 @@ async fn transcribe_deepgram(
     let api_key = settings
         .deepgram_api_key
         .clone()
-        .or_else(|| std::env::var("DEEPGRAM_API_KEY").ok())
+        .or_else(|| option_env!("DEEPGRAM_API_KEY").map(|s| s.to_string()))
         .ok_or("Deepgram API key not configured")?;
 
     let audio_data = tokio::fs::read(file_path)

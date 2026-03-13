@@ -16,13 +16,25 @@ pub async fn request_login_code(
     phone: String,
     state: State<'_, Arc<RwLock<AppState>>>,
 ) -> Result<AuthToken, String> {
-    tracing::info!(phone = %phone, "Requesting login code");
-
     let state_guard = state.read().await;
     let client_manager = state_guard
         .client_manager
         .as_ref()
         .ok_or("Client manager not initialized")?;
+
+    let api_id = client_manager.api_id();
+    let api_hash = client_manager.api_hash();
+
+    tracing::info!(
+        phone = %phone,
+        api_id = api_id,
+        api_hash_len = api_hash.len(),
+        "Requesting login code"
+    );
+
+    if api_id == 0 || api_hash.is_empty() {
+        return Err("Telegram API credentials not configured (api_id=0 or api_hash empty)".to_string());
+    }
 
     let account_id = Uuid::new_v4().to_string();
 
@@ -30,8 +42,6 @@ pub async fn request_login_code(
         .create_client(account_id.clone(), phone.clone())
         .await
         .map_err(|e| format!("Failed to create client: {}", e))?;
-
-    let api_hash = client_manager.api_hash();
 
     // Add timeout to prevent infinite hang
     let token = tokio::time::timeout(

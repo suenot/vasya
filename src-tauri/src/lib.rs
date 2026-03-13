@@ -33,51 +33,8 @@ impl Default for AppState {
     }
 }
 
-/// Load .env file — checks multiple locations:
-/// 1. Next to the executable (for bundled .app)
-/// 2. macOS .app Resources dir (Tauri bundled resources)
-/// 3. Parent of executable dir (for cargo run from src-tauri/)
-/// 4. Current working directory
-/// 5. Parent of cwd (for tauri dev)
-fn load_env() {
-    let candidates: Vec<std::path::PathBuf> = {
-        let mut v = Vec::new();
-        if let Ok(exe) = std::env::current_exe() {
-            if let Some(dir) = exe.parent() {
-                // Next to the binary (Contents/MacOS/.env)
-                v.push(dir.join(".env"));
-                // macOS .app Resources dir (Contents/Resources/.env — Tauri bundled resources)
-                if let Some(contents) = dir.parent() {
-                    v.push(contents.join("Resources").join(".env"));
-                }
-                // Next to .app bundle (Contents/MacOS/../../../.env)
-                if let Some(grandparent) = dir.parent().and_then(|p| p.parent()).and_then(|p| p.parent()) {
-                    v.push(grandparent.join(".env"));
-                }
-            }
-        }
-        // cwd-relative (for cargo run / tauri dev)
-        v.push(std::path::PathBuf::from(".env"));
-        v.push(std::path::PathBuf::from("../.env"));
-        v
-    };
-
-    for path in &candidates {
-        if path.exists() {
-            if let Err(e) = dotenvy::from_path(path) {
-                eprintln!("Warning: could not load .env from {:?}: {}", path, e);
-            } else {
-                eprintln!("Loaded .env from {:?}", path);
-                return;
-            }
-        }
-    }
-    eprintln!("No .env file found in any of: {:?}", candidates);
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    load_env();
 
     let initial_state = AppState::default();
 
@@ -91,6 +48,7 @@ pub fn run() {
             commands::verify_code,
             commands::check_password,
             commands::logout,
+            commands::has_api_credentials,
             commands::update_api_credentials,
             commands::get_chats,
             commands::get_cached_chats,
@@ -151,22 +109,14 @@ pub fn run() {
             let sessions_dir = app_dir.join("sessions");
             std::fs::create_dir_all(&sessions_dir).expect("Failed to create sessions directory");
 
-            // Compile-time defaults from .env (baked into binary), with runtime override
-            let api_id = std::env::var("TELEGRAM_API_ID")
-                .ok()
+            // Credentials baked into binary at compile time (via build.rs)
+            let api_id = option_env!("TELEGRAM_API_ID")
                 .and_then(|s| s.parse::<i32>().ok())
-                .unwrap_or_else(|| {
-                    option_env!("TELEGRAM_API_ID")
-                        .and_then(|s| s.parse::<i32>().ok())
-                        .unwrap_or(0)
-                });
+                .unwrap_or(0);
 
-            let api_hash = std::env::var("TELEGRAM_API_HASH")
-                .unwrap_or_else(|_| {
-                    option_env!("TELEGRAM_API_HASH")
-                        .unwrap_or_default()
-                        .to_string()
-                });
+            let api_hash = option_env!("TELEGRAM_API_HASH")
+                .unwrap_or_default()
+                .to_string();
 
             let client_manager =
                 telegram::TelegramClientManager::new(sessions_dir, api_id, api_hash);

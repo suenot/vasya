@@ -7,6 +7,7 @@ interface SettingsStore {
   isConfigured: boolean;
 
   setApiCredentials: (apiId: string, apiHash: string) => void;
+  markConfigured: () => void;
   clearApiCredentials: () => void;
 }
 
@@ -20,6 +21,11 @@ export const useSettingsStore = create<SettingsStore>()(
       setApiCredentials: (apiId, apiHash) => set({
         apiId,
         apiHash,
+        isConfigured: true,
+      }),
+
+      // Mark as configured without storing credentials (used when backend has bundled .env)
+      markConfigured: () => set({
         isConfigured: true,
       }),
 
