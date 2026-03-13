@@ -7,6 +7,10 @@ import { useThemeStore, ThemeSetting } from '../../store/themeStore';
 import { useDownloadStore } from '../../store/downloadStore';
 import { useSttStore, SttProvider } from '../../store/sttStore';
 import { useHotkeysStore } from '../../store/hotkeysStore';
+import { useFolderStore, ChatTypeFilter, BUILTIN_TAB_IDS, TabEntry } from '../../store/folderStore';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useTranslation, useLanguageStore, LANGUAGE_LABELS, Language } from '../../i18n';
 import './AccountSettings.css';
 
@@ -15,6 +19,48 @@ interface AccountSettingsProps {
 }
 
 type SettingsSection = 'general' | 'privacy' | 'data' | 'downloads' | 'stt' | 'hotkeys' | 'folders' | 'devices' | 'language';
+
+/** Sortable drag-handle tab row */
+const SortableTabItem = ({ tab, label, isBuiltin, onToggle, onDelete }: {
+  tab: TabEntry;
+  label: string;
+  isBuiltin: boolean;
+  onToggle: (visible: boolean) => void;
+  onDelete?: () => void;
+}) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tab.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="settings-item sortable-tab-item">
+      <div className="drag-handle" {...attributes} {...listeners}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <line x1="8" y1="6" x2="16" y2="6" /><line x1="8" y1="12" x2="16" y2="12" /><line x1="8" y1="18" x2="16" y2="18" />
+        </svg>
+      </div>
+      <label className="tab-toggle-label">
+        <input
+          type="checkbox"
+          checked={tab.visible}
+          onChange={(e) => onToggle(e.target.checked)}
+        />
+        <span className="settings-item-title">{label}</span>
+        {isBuiltin && <span className="tab-badge builtin">built-in</span>}
+      </label>
+      {onDelete && (
+        <button className="icon-button delete-folder" style={{ color: '#e74c3c', marginLeft: 'auto' }} onClick={onDelete}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+};
 
 export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
   const { t } = useTranslation();
@@ -37,6 +83,20 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
 
   const { hotkeys, updateHotkey, resetDefaults } = useHotkeysStore();
   const [listeningForKey, setListeningForKey] = useState<string | null>(null);
+
+  const folders = useFolderStore((s) => s.folders);
+  const addFolder = useFolderStore((s) => s.addFolder);
+  const deleteFolder = useFolderStore((s) => s.deleteFolder);
+  const tabs = useFolderStore((s) => s.tabs);
+  const setTabVisible = useFolderStore((s) => s.setTabVisible);
+  const reorderTabs = useFolderStore((s) => s.reorderTabs);
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [selectedChatTypes, setSelectedChatTypes] = useState<ChatTypeFilter[]>([]);
 
   useEffect(() => {
     if (activeSection === 'stt') {
@@ -487,6 +547,164 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
     </div>
   );
 
+  const renderFoldersSettings = () => {
+    const chatTypeOptions: { type: ChatTypeFilter; label: string }[] = [
+      { type: 'contacts', label: t('filter_contacts') },
+      { type: 'groups', label: t('chat_type_group') },
+      { type: 'channels', label: t('chat_type_channel') },
+      { type: 'bots', label: 'Bots' },
+    ];
+
+    const toggleChatType = (type: ChatTypeFilter) => {
+      setSelectedChatTypes(prev =>
+        prev.includes(type) ? prev.filter(ct => ct !== type) : [...prev, type]
+      );
+    };
+
+    const handleCreateFolder = () => {
+      if (!newFolderName.trim()) return;
+      addFolder({
+        name: newFolderName,
+        includedChatTypes: selectedChatTypes,
+        excludedChatTypes: [],
+        includedChatIds: [],
+        excludedChatIds: [],
+      });
+      setNewFolderName('');
+      setSelectedChatTypes([]);
+      setEditingFolderId(null);
+    };
+
+    const builtinLabels: Record<string, string> = {
+      all: t('all_chats' as any) || 'All Chats',
+      contacts: t('filter_contacts'),
+      chats: t('filter_chats'),
+      favorites: t('filter_favorites'),
+    };
+
+    const getTabLabel = (tabId: string): string => {
+      if (builtinLabels[tabId]) return builtinLabels[tabId];
+      const folder = folders.find(f => f.id === tabId);
+      return folder?.name ?? tabId;
+    };
+
+    const isBuiltin = (tabId: string): boolean =>
+      (BUILTIN_TAB_IDS as readonly string[]).includes(tabId);
+
+    // Sync: ensure all current tabs are present
+    const folderIds = new Set(folders.map(f => f.id));
+    const allValidIds = new Set([...BUILTIN_TAB_IDS, ...folderIds]);
+    const currentTabs = tabs.filter(tab => allValidIds.has(tab.id));
+
+    const handleDragEnd = (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (over && active.id !== over.id) {
+        const oldIndex = currentTabs.findIndex(tab => tab.id === active.id);
+        const newIndex = currentTabs.findIndex(tab => tab.id === over.id);
+        if (oldIndex !== -1 && newIndex !== -1) {
+          const newTabs = [...currentTabs];
+          const [moved] = newTabs.splice(oldIndex, 1);
+          newTabs.splice(newIndex, 0, moved);
+          reorderTabs(newTabs.map(tab => tab.id));
+        }
+      }
+    };
+
+    return (
+      <div className="settings-content">
+        <h2>{t('nav_folders')}</h2>
+
+        {/* Tab visibility & ordering */}
+        <div className="settings-group">
+          <h3>{t('tabs_order_title' as any) || 'Tabs'}</h3>
+          <p className="settings-item-description" style={{ marginBottom: 12 }}>
+            {t('tabs_order_desc' as any) || 'Drag to reorder, toggle to show/hide'}
+          </p>
+
+          <DndContext
+            sensors={dndSensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={currentTabs.map(tab => tab.id)} strategy={verticalListSortingStrategy}>
+              <div className="folders-list">
+                {currentTabs.map(tab => (
+                  <SortableTabItem
+                    key={tab.id}
+                    tab={tab}
+                    label={getTabLabel(tab.id)}
+                    isBuiltin={isBuiltin(tab.id)}
+                    onToggle={(visible) => setTabVisible(tab.id, visible)}
+                    onDelete={!isBuiltin(tab.id) ? () => {
+                      if (confirm(t('delete_folder_confirm'))) {
+                        deleteFolder(tab.id);
+                      }
+                    } : undefined}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        </div>
+
+        {/* Create new folder */}
+        <div className="settings-group">
+          <div className="settings-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3>{t('folders_title')}</h3>
+            {!editingFolderId && (
+              <button className="text-button" onClick={() => setEditingFolderId('new')}>
+                + {t('create_new_folder')}
+              </button>
+            )}
+          </div>
+
+          {editingFolderId === 'new' && (
+            <div className="folder-edit-box">
+              <div className="input-group">
+                <label className="settings-item-title">{t('folder_name')}</label>
+                <input
+                  type="text"
+                  className="stt-language-select"
+                  style={{ margin: '8px 0 16px', width: '100%' }}
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  placeholder={t('folder_name')}
+                  autoFocus
+                />
+              </div>
+
+              <div className="input-group">
+                <label className="settings-item-title">{t('chat_types')}</label>
+                <div className="chat-type-chips">
+                  {chatTypeOptions.map(opt => (
+                    <button
+                      key={opt.type}
+                      className={`type-chip ${selectedChatTypes.includes(opt.type) ? 'active' : ''}`}
+                      onClick={() => toggleChatType(opt.type)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="folder-actions">
+                <button className="settings-nav-item logout-button" style={{ display: 'inline-flex', padding: '8px 24px', width: 'auto' }} onClick={() => setEditingFolderId(null)}>{t('cancel')}</button>
+                <button
+                  className="stt-model-download-btn"
+                  onClick={handleCreateFolder}
+                  disabled={!newFolderName.trim()}
+                >
+                  {t('save_folder')}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderContent = () => {
     switch (activeSection) {
       case 'general': return renderGeneralSettings();
@@ -496,8 +714,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
       case 'stt': return renderSttSettings();
       case 'hotkeys': return renderHotkeysSettings();
       case 'language': return renderLanguageSettings();
-      case 'folders':
-        return (<div className="settings-content"><h2>{t('nav_folders')}</h2><p className="settings-placeholder">{t('feature_in_dev')}</p></div>);
+      case 'folders': return renderFoldersSettings();
       case 'devices':
         return (<div className="settings-content"><h2>{t('nav_devices')}</h2><p className="settings-placeholder">{t('feature_in_dev')}</p></div>);
       default: return null;

@@ -12,8 +12,8 @@ interface ChatListProps {
   selectedChatId: number | null;
   favorites: Set<number>;
   searchQuery: string;
-  activeFilter: 'contacts' | 'chats' | 'favorites';
-  onFilterChange: (filter: 'contacts' | 'chats' | 'favorites') => void;
+  activeFilter: string;
+  onFilterChange: (filter: string) => void;
   onChatClick: (chatId: number) => void;
   onContextMenu: (e: React.MouseEvent, chatId: number) => void;
 }

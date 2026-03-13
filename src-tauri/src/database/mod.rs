@@ -208,6 +208,121 @@ impl Database {
 
         Ok(chats)
     }
+
+    // ── Folders ──
+
+    pub async fn get_folders(&self) -> Result<Vec<FolderRecord>> {
+        let conn = Arc::clone(&self.conn);
+        tokio::task::spawn_blocking(move || {
+            let conn = conn.lock().unwrap();
+            let mut stmt = conn.prepare("SELECT id, name, included_chat_types, excluded_chat_types, included_chat_ids, excluded_chat_ids, sort_order FROM chat_folders ORDER BY sort_order").context("prepare")?;
+            let mut result = Vec::new();
+            while let Ok(sqlite::State::Row) = stmt.next() {
+                result.push(FolderRecord {
+                    id: stmt.read::<String, _>("id").unwrap(),
+                    name: stmt.read::<String, _>("name").unwrap(),
+                    included_chat_types: serde_json::from_str(&stmt.read::<String, _>("included_chat_types").unwrap()).unwrap_or_default(),
+                    excluded_chat_types: serde_json::from_str(&stmt.read::<String, _>("excluded_chat_types").unwrap()).unwrap_or_default(),
+                    included_chat_ids: serde_json::from_str(&stmt.read::<String, _>("included_chat_ids").unwrap()).unwrap_or_default(),
+                    excluded_chat_ids: serde_json::from_str(&stmt.read::<String, _>("excluded_chat_ids").unwrap()).unwrap_or_default(),
+                    sort_order: stmt.read::<i64, _>("sort_order").unwrap() as i32,
+                });
+            }
+            Ok(result)
+        }).await.context("spawn_blocking")?
+    }
+
+    pub async fn save_folder(&self, folder: &FolderRecord) -> Result<()> {
+        let conn = Arc::clone(&self.conn);
+        let folder = folder.clone();
+        tokio::task::spawn_blocking(move || {
+            let conn = conn.lock().unwrap();
+            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64;
+            let mut stmt = conn.prepare("INSERT INTO chat_folders (id, name, included_chat_types, excluded_chat_types, included_chat_ids, excluded_chat_ids, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, included_chat_types=excluded.included_chat_types, excluded_chat_types=excluded.excluded_chat_types, included_chat_ids=excluded.included_chat_ids, excluded_chat_ids=excluded.excluded_chat_ids, sort_order=excluded.sort_order, updated_at=excluded.updated_at").context("prepare")?;
+            stmt.bind((1, folder.id.as_str())).unwrap();
+            stmt.bind((2, folder.name.as_str())).unwrap();
+            stmt.bind((3, serde_json::to_string(&folder.included_chat_types).unwrap().as_str())).unwrap();
+            stmt.bind((4, serde_json::to_string(&folder.excluded_chat_types).unwrap().as_str())).unwrap();
+            stmt.bind((5, serde_json::to_string(&folder.included_chat_ids).unwrap().as_str())).unwrap();
+            stmt.bind((6, serde_json::to_string(&folder.excluded_chat_ids).unwrap().as_str())).unwrap();
+            stmt.bind((7, folder.sort_order as i64)).unwrap();
+            stmt.bind((8, now)).unwrap();
+            stmt.bind((9, now)).unwrap();
+            stmt.next().context("execute")?;
+            Ok(())
+        }).await.context("spawn_blocking")?
+    }
+
+    pub async fn delete_folder(&self, id: &str) -> Result<()> {
+        let conn = Arc::clone(&self.conn);
+        let id = id.to_string();
+        tokio::task::spawn_blocking(move || {
+            let conn = conn.lock().unwrap();
+            let mut stmt = conn.prepare("DELETE FROM chat_folders WHERE id = ?").context("prepare")?;
+            stmt.bind((1, id.as_str())).unwrap();
+            stmt.next().context("execute")?;
+            let mut stmt2 = conn.prepare("DELETE FROM chat_tabs WHERE id = ?").context("prepare")?;
+            stmt2.bind((1, id.as_str())).unwrap();
+            stmt2.next().context("execute")?;
+            Ok(())
+        }).await.context("spawn_blocking")?
+    }
+
+    // ── Tabs ──
+
+    pub async fn get_tabs(&self) -> Result<Vec<TabRecord>> {
+        let conn = Arc::clone(&self.conn);
+        tokio::task::spawn_blocking(move || {
+            let conn = conn.lock().unwrap();
+            let mut stmt = conn.prepare("SELECT id, visible, sort_order FROM chat_tabs ORDER BY sort_order").context("prepare")?;
+            let mut result = Vec::new();
+            while let Ok(sqlite::State::Row) = stmt.next() {
+                result.push(TabRecord {
+                    id: stmt.read::<String, _>("id").unwrap(),
+                    visible: stmt.read::<i64, _>("visible").unwrap() != 0,
+                    sort_order: stmt.read::<i64, _>("sort_order").unwrap() as i32,
+                });
+            }
+            Ok(result)
+        }).await.context("spawn_blocking")?
+    }
+
+    pub async fn save_tabs(&self, tabs: &[TabRecord]) -> Result<()> {
+        let conn = Arc::clone(&self.conn);
+        let tabs = tabs.to_vec();
+        tokio::task::spawn_blocking(move || {
+            let conn = conn.lock().unwrap();
+            conn.execute("DELETE FROM chat_tabs").context("clear")?;
+            for tab in &tabs {
+                let mut stmt = conn.prepare("INSERT INTO chat_tabs (id, visible, sort_order) VALUES (?, ?, ?)").context("prepare")?;
+                stmt.bind((1, tab.id.as_str())).unwrap();
+                stmt.bind((2, if tab.visible { 1i64 } else { 0i64 })).unwrap();
+                stmt.bind((3, tab.sort_order as i64)).unwrap();
+                stmt.next().context("execute")?;
+            }
+            Ok(())
+        }).await.context("spawn_blocking")?
+    }
+}
+
+/// Folder record
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct FolderRecord {
+    pub id: String,
+    pub name: String,
+    pub included_chat_types: Vec<String>,
+    pub excluded_chat_types: Vec<String>,
+    pub included_chat_ids: Vec<i64>,
+    pub excluded_chat_ids: Vec<i64>,
+    pub sort_order: i32,
+}
+
+/// Tab record
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct TabRecord {
+    pub id: String,
+    pub visible: bool,
+    pub sort_order: i32,
 }
 
 /// Chat record from database

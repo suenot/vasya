@@ -187,25 +187,31 @@
 }
 
 .filter-button {
-  padding: 8px 12px;
+  padding: 6px 14px;
   background: transparent;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 20px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
   white-space: nowrap;
   position: relative;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
 }
 
 .filter-button:hover {
-  background: var(--sidebar-hover);
   color: var(--text-primary);
+  background: var(--bg-secondary);
 }
 
 .filter-button.active {
   color: var(--accent-color);
+  background: transparent;
+  border-color: transparent;
+}
+
+.filter-button.active:hover {
   background: transparent;
 }
 
@@ -508,6 +514,19 @@
 
 .context-menu-item:hover {
   background: var(--sidebar-hover);
+}
+
+.context-menu-submenu-trigger {
+  position: relative;
+  cursor: default;
+}
+
+.context-submenu {
+  position: absolute;
+  left: 100%;
+  top: -4px;
+  margin-left: 2px;
+  animation: contextMenuFadeIn 0.1s ease-out;
 }
 
 

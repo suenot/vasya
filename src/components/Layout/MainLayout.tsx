@@ -11,6 +11,7 @@ import { useConnectionStore } from '../../store/connectionStore';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useTauriEvent } from '../../hooks/useTauriEvent';
 import { useHotkeysStore } from '../../store/hotkeysStore';
+import { useFolderStore } from '../../store/folderStore';
 import { Chat } from '../../types/telegram';
 import { useTranslation } from '../../i18n';
 import './MainLayout.css';
@@ -34,7 +35,10 @@ export const MainLayout = () => {
   const [selectedChatId, setSelectedChatId] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<'contacts' | 'chats' | 'favorites'>('chats');
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const folders = useFolderStore((s) => s.folders);
+  const foldersLoaded = useFolderStore((s) => s.loaded);
+  const loadFoldersFromDb = useFolderStore((s) => s.loadFromDb);
   const [favorites, setFavorites] = useState<Set<number>>(() => {
     const saved = localStorage.getItem('favorites');
     return saved ? new Set(JSON.parse(saved)) : new Set();
@@ -107,6 +111,11 @@ export const MainLayout = () => {
     };
   }, []);
 
+  // Load folders from DB on mount
+  useEffect(() => {
+    if (!foldersLoaded) loadFoldersFromDb();
+  }, [foldersLoaded, loadFoldersFromDb]);
+
   // Clear streaming state on account switch
   useEffect(() => {
     if (flushRef.current) {
@@ -164,17 +173,39 @@ export const MainLayout = () => {
         }
       }
       switch (activeFilter) {
+        case 'all':
+          return true;
         case 'contacts':
-          return chat.chatType === 'user';
+          return chat.chatType === 'user' && !chat.username?.toLowerCase().includes('bot');
         case 'chats':
           return chat.chatType === 'group' || chat.chatType === 'channel';
         case 'favorites':
           return favorites.has(chat.id);
-        default:
+        default: {
+          const folder = folders.find(f => f.id === activeFilter);
+          if (folder) {
+            if (folder.excludedChatIds.includes(chat.id)) return false;
+            if (folder.includedChatIds.includes(chat.id)) return true;
+
+            let chatType: 'contacts' | 'non_contacts' | 'groups' | 'channels' | 'bots' = 'non_contacts';
+            if (chat.chatType === 'user') {
+              chatType = chat.username?.toLowerCase().includes('bot') ? 'bots' : 'contacts';
+            } else if (chat.chatType === 'group') {
+              chatType = 'groups';
+            } else if (chat.chatType === 'channel') {
+              chatType = 'channels';
+            }
+
+            if (folder.excludedChatTypes.includes(chatType)) return false;
+            if (folder.includedChatTypes.includes(chatType)) return true;
+
+            return false;
+          }
           return true;
+        }
       }
     });
-  }, [chats, debouncedSearch, activeFilter, favorites]);
+  }, [chats, debouncedSearch, activeFilter, favorites, folders]);
 
   const handleChatClick = useCallback((chatId: number) => {
     setSelectedChatId(chatId);

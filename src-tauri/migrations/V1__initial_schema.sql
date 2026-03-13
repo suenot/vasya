@@ -104,3 +104,23 @@ CREATE TABLE IF NOT EXISTS settings (
     value TEXT NOT NULL,
     updated_at INTEGER NOT NULL
 );
+
+-- Пользовательские папки чатов
+CREATE TABLE IF NOT EXISTS chat_folders (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    included_chat_types TEXT NOT NULL DEFAULT '[]',   -- JSON array of ChatTypeFilter
+    excluded_chat_types TEXT NOT NULL DEFAULT '[]',
+    included_chat_ids TEXT NOT NULL DEFAULT '[]',     -- JSON array of chat ids
+    excluded_chat_ids TEXT NOT NULL DEFAULT '[]',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
+-- Вкладки (порядок и видимость built-in и кастомных)
+CREATE TABLE IF NOT EXISTS chat_tabs (
+    id TEXT PRIMARY KEY,             -- 'all', 'contacts', 'chats', 'favorites', or folder id
+    visible INTEGER NOT NULL DEFAULT 1,
+    sort_order INTEGER NOT NULL DEFAULT 0
+);

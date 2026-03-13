@@ -643,3 +643,142 @@ input:checked+.toggle-slider:before {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Folder Management */
+.folder-edit-box {
+  background: var(--bg-secondary);
+  padding: 24px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  border: 1px solid var(--border-color);
+}
+
+.input-group {
+  margin-bottom: 20px;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+
+.chat-type-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.type-chip {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.type-chip:hover {
+  background: var(--bg-tertiary);
+}
+
+.type-chip.active {
+  background: var(--accent-color);
+  color: white;
+  border-color: var(--accent-color);
+}
+
+.folder-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.text-button {
+  background: transparent;
+  border: none;
+  color: var(--accent-color);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.text-button:hover {
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+}
+
+.delete-folder:hover {
+  background-color: rgba(231, 76, 60, 0.1) !important;
+}
+
+/* Sortable tab items */
+.sortable-tab-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg-secondary, #1e1e1e);
+  margin-bottom: 4px;
+  user-select: none;
+}
+
+.sortable-tab-item:hover {
+  background: var(--bg-hover, #2a2a2a);
+}
+
+.drag-handle {
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary, #888);
+  flex-shrink: 0;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.drag-handle:hover {
+  color: var(--text-primary, #fff);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.tab-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  cursor: pointer;
+}
+
+.tab-toggle-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-color, #7c5cfc);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tab-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tab-badge.builtin {
+  background: rgba(124, 92, 252, 0.15);
+  color: var(--accent-color, #7c5cfc);
+}

@@ -66,6 +66,11 @@ pub fn run() {
             commands::transcribe_audio,
             commands::download_whisper_model,
             commands::get_whisper_models_status,
+            commands::get_folders,
+            commands::save_folder,
+            commands::delete_folder,
+            commands::get_tabs,
+            commands::save_tabs,
         ])
         .setup(|app| {
             let app_dir = app
