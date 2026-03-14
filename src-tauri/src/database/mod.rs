@@ -222,6 +222,7 @@ impl Database {
             while let Ok(sqlite::State::Row) = stmt.next() {
                 result.push(FolderRecord {
                     id: stmt.read::<String, _>("id").unwrap(),
+                    account_id: account_id.clone(),
                     name: stmt.read::<String, _>("name").unwrap(),
                     included_chat_types: serde_json::from_str(&stmt.read::<String, _>("included_chat_types").unwrap()).unwrap_or_default(),
                     excluded_chat_types: serde_json::from_str(&stmt.read::<String, _>("excluded_chat_types").unwrap()).unwrap_or_default(),
@@ -288,6 +289,7 @@ impl Database {
             while let Ok(sqlite::State::Row) = stmt.next() {
                 result.push(TabRecord {
                     id: stmt.read::<String, _>("id").unwrap(),
+                    account_id: account_id.clone(),
                     visible: stmt.read::<i64, _>("visible").unwrap() != 0,
                     sort_order: stmt.read::<i64, _>("sort_order").unwrap() as i32,
                 });
@@ -322,6 +324,7 @@ impl Database {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct FolderRecord {
     pub id: String,
+    pub account_id: String,
     pub name: String,
     pub included_chat_types: Vec<String>,
     pub excluded_chat_types: Vec<String>,
@@ -334,6 +337,7 @@ pub struct FolderRecord {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TabRecord {
     pub id: String,
+    pub account_id: String,
     pub visible: bool,
     pub sort_order: i32,
 }

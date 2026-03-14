@@ -60,3 +60,37 @@ pub async fn create_storage(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn create_local_storage_succeeds() {
+        let dir = tempfile::tempdir().unwrap();
+        let result = create_storage(&StorageMode::Local, dir.path()).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn create_remote_storage_with_invalid_url_fails() {
+        let dir = tempfile::tempdir().unwrap();
+        let mode = StorageMode::Remote {
+            url: "ftp://example.com".to_string(),
+            api_key: None,
+        };
+        let result = create_storage(&mode, dir.path()).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn create_remote_storage_with_valid_url_succeeds() {
+        let dir = tempfile::tempdir().unwrap();
+        let mode = StorageMode::Remote {
+            url: "https://api.example.com".to_string(),
+            api_key: Some("key123".to_string()),
+        };
+        let result = create_storage(&mode, dir.path()).await;
+        assert!(result.is_ok());
+    }
+}

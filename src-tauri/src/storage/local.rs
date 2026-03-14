@@ -158,6 +158,7 @@ impl DataStorage for LocalStorage {
             while let Ok(sqlite::State::Row) = stmt.next() {
                 result.push(FolderRecord {
                     id: stmt.read::<String, _>("id").unwrap(),
+                    account_id: account_id.clone(),
                     name: stmt.read::<String, _>("name").unwrap(),
                     included_chat_types: serde_json::from_str(
                         &stmt.read::<String, _>("included_chat_types").unwrap(),
@@ -250,6 +251,7 @@ impl DataStorage for LocalStorage {
             while let Ok(sqlite::State::Row) = stmt.next() {
                 result.push(TabRecord {
                     id: stmt.read::<String, _>("id").unwrap(),
+                    account_id: account_id.clone(),
                     visible: stmt.read::<i64, _>("visible").unwrap() != 0,
                     sort_order: stmt.read::<i64, _>("sort_order").unwrap() as i32,
                 });
@@ -283,5 +285,245 @@ impl DataStorage for LocalStorage {
         })
         .await
         .context("spawn_blocking")?
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_test_storage(dir: &std::path::Path) -> LocalStorage {
+        let db_path = dir.join("test.db");
+        LocalStorage::open(&db_path).expect("Failed to open test database")
+    }
+
+    fn sample_chat(id: i64, account_id: &str) -> ChatRecord {
+        ChatRecord {
+            id,
+            account_id: account_id.to_string(),
+            chat_type: "group".to_string(),
+            title: format!("Chat {}", id),
+            username: Some(format!("chat{}", id)),
+            avatar_path: None,
+            last_message: Some("hello".to_string()),
+            unread_count: 1,
+        }
+    }
+
+    fn sample_folder(id: &str, sort_order: i32) -> FolderRecord {
+        FolderRecord {
+            id: id.to_string(),
+            account_id: String::new(),
+            name: format!("Folder {}", id),
+            included_chat_types: vec!["group".to_string()],
+            excluded_chat_types: vec![],
+            included_chat_ids: vec![100],
+            excluded_chat_ids: vec![],
+            sort_order,
+        }
+    }
+
+    fn sample_tab(id: &str, visible: bool, sort_order: i32) -> TabRecord {
+        TabRecord {
+            id: id.to_string(),
+            account_id: String::new(),
+            visible,
+            sort_order,
+        }
+    }
+
+    #[test]
+    fn db_file_is_created() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("test.db");
+        assert!(!db_path.exists());
+        let _storage = LocalStorage::open(&db_path).unwrap();
+        assert!(db_path.exists());
+    }
+
+    #[tokio::test]
+    async fn save_and_get_chats() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = make_test_storage(dir.path());
+
+        let chat = sample_chat(1, "account-a");
+        storage.save_chat(&chat).await.unwrap();
+
+        let chats = storage.get_chats("account-a").await.unwrap();
+        assert_eq!(chats.len(), 1);
+        assert_eq!(chats[0].id, 1);
+        assert_eq!(chats[0].title, "Chat 1");
+        assert_eq!(chats[0].chat_type, "group");
+        assert_eq!(chats[0].username, Some("chat1".to_string()));
+        assert_eq!(chats[0].unread_count, 1);
+    }
+
+    #[tokio::test]
+    async fn save_chat_upserts() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = make_test_storage(dir.path());
+
+        let mut chat = sample_chat(1, "acc");
+        storage.save_chat(&chat).await.unwrap();
+
+        chat.title = "Updated Title".to_string();
+        chat.unread_count = 99;
+        storage.save_chat(&chat).await.unwrap();
+
+        let chats = storage.get_chats("acc").await.unwrap();
+        assert_eq!(chats.len(), 1);
+        assert_eq!(chats[0].title, "Updated Title");
+        assert_eq!(chats[0].unread_count, 99);
+    }
+
+    #[tokio::test]
+    async fn save_and_get_folders() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = make_test_storage(dir.path());
+
+        let folder = sample_folder("f1", 0);
+        storage.save_folder("acc", &folder).await.unwrap();
+
+        let folders = storage.get_folders("acc").await.unwrap();
+        assert_eq!(folders.len(), 1);
+        assert_eq!(folders[0].id, "f1");
+        assert_eq!(folders[0].name, "Folder f1");
+        assert_eq!(folders[0].included_chat_types, vec!["group"]);
+        assert_eq!(folders[0].included_chat_ids, vec![100]);
+        assert_eq!(folders[0].sort_order, 0);
+    }
+
+    #[tokio::test]
+    async fn folders_ordered_by_sort_order() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = make_test_storage(dir.path());
+
+        storage.save_folder("acc", &sample_folder("f2", 2)).await.unwrap();
+        storage.save_folder("acc", &sample_folder("f1", 1)).await.unwrap();
+        storage.save_folder("acc", &sample_folder("f3", 3)).await.unwrap();
+
+        let folders = storage.get_folders("acc").await.unwrap();
+        assert_eq!(folders.len(), 3);
+        assert_eq!(folders[0].id, "f1");
+        assert_eq!(folders[1].id, "f2");
+        assert_eq!(folders[2].id, "f3");
+    }
+
+    #[tokio::test]
+    async fn delete_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = make_test_storage(dir.path());
+
+        storage.save_folder("acc", &sample_folder("f1", 0)).await.unwrap();
+        storage.save_folder("acc", &sample_folder("f2", 1)).await.unwrap();
+
+        storage.delete_folder("acc", "f1").await.unwrap();
+
+        let folders = storage.get_folders("acc").await.unwrap();
+        assert_eq!(folders.len(), 1);
+        assert_eq!(folders[0].id, "f2");
+    }
+
+    #[tokio::test]
+    async fn delete_nonexistent_folder_succeeds() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = make_test_storage(dir.path());
+        // Should not error when deleting a folder that does not exist
+        storage.delete_folder("acc", "no-such-folder").await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn save_and_get_tabs() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = make_test_storage(dir.path());
+
+        let tabs = vec![
+            sample_tab("all", true, 0),
+            sample_tab("contacts", false, 1),
+            sample_tab("custom", true, 2),
+        ];
+        storage.save_tabs("acc", &tabs).await.unwrap();
+
+        let result = storage.get_tabs("acc").await.unwrap();
+        assert_eq!(result.len(), 3);
+        assert_eq!(result[0].id, "all");
+        assert!(result[0].visible);
+        assert_eq!(result[1].id, "contacts");
+        assert!(!result[1].visible);
+        assert_eq!(result[2].id, "custom");
+        assert!(result[2].visible);
+    }
+
+    #[tokio::test]
+    async fn save_tabs_replaces_existing() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = make_test_storage(dir.path());
+
+        let tabs1 = vec![sample_tab("a", true, 0), sample_tab("b", true, 1)];
+        storage.save_tabs("acc", &tabs1).await.unwrap();
+
+        let tabs2 = vec![sample_tab("c", false, 0)];
+        storage.save_tabs("acc", &tabs2).await.unwrap();
+
+        let result = storage.get_tabs("acc").await.unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].id, "c");
+    }
+
+    #[tokio::test]
+    async fn accounts_are_isolated_chats() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = make_test_storage(dir.path());
+
+        storage.save_chat(&sample_chat(1, "alice")).await.unwrap();
+        storage.save_chat(&sample_chat(2, "alice")).await.unwrap();
+        storage.save_chat(&sample_chat(3, "bob")).await.unwrap();
+
+        let alice_chats = storage.get_chats("alice").await.unwrap();
+        let bob_chats = storage.get_chats("bob").await.unwrap();
+        let empty = storage.get_chats("nobody").await.unwrap();
+
+        assert_eq!(alice_chats.len(), 2);
+        assert_eq!(bob_chats.len(), 1);
+        assert_eq!(bob_chats[0].id, 3);
+        assert!(empty.is_empty());
+    }
+
+    #[tokio::test]
+    async fn accounts_are_isolated_folders() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = make_test_storage(dir.path());
+
+        storage.save_folder("alice", &sample_folder("f1", 0)).await.unwrap();
+        storage.save_folder("bob", &sample_folder("f2", 0)).await.unwrap();
+
+        let alice = storage.get_folders("alice").await.unwrap();
+        let bob = storage.get_folders("bob").await.unwrap();
+        let empty = storage.get_folders("nobody").await.unwrap();
+
+        assert_eq!(alice.len(), 1);
+        assert_eq!(alice[0].id, "f1");
+        assert_eq!(bob.len(), 1);
+        assert_eq!(bob[0].id, "f2");
+        assert!(empty.is_empty());
+    }
+
+    #[tokio::test]
+    async fn accounts_are_isolated_tabs() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = make_test_storage(dir.path());
+
+        storage.save_tabs("alice", &[sample_tab("t1", true, 0)]).await.unwrap();
+        storage.save_tabs("bob", &[sample_tab("t2", false, 0)]).await.unwrap();
+
+        let alice = storage.get_tabs("alice").await.unwrap();
+        let bob = storage.get_tabs("bob").await.unwrap();
+        let empty = storage.get_tabs("nobody").await.unwrap();
+
+        assert_eq!(alice.len(), 1);
+        assert_eq!(alice[0].id, "t1");
+        assert_eq!(bob.len(), 1);
+        assert_eq!(bob[0].id, "t2");
+        assert!(empty.is_empty());
     }
 }

@@ -5,38 +5,16 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use reqwest::Client;
-use std::net::IpAddr;
 use url::Url;
 
 use super::{ChatRecord, DataStorage, FolderRecord, TabRecord};
 
-/// Validate that a remote URL is safe (no SSRF to internal networks).
+/// Validate that a remote URL has a valid http/https scheme and is well-formed.
 fn validate_remote_url(raw: &str) -> Result<String> {
     let parsed = Url::parse(raw).context("Invalid URL")?;
     match parsed.scheme() {
         "http" | "https" => {}
         _ => anyhow::bail!("Only http/https URLs are allowed"),
-    }
-    if let Some(host) = parsed.host_str() {
-        // Check for localhost
-        if host == "localhost" || host == "127.0.0.1" || host == "[::1]" || host == "0.0.0.0" {
-            anyhow::bail!("Cannot connect to localhost");
-        }
-        // Check for private IPs
-        if let Ok(ip) = host.parse::<IpAddr>() {
-            match ip {
-                IpAddr::V4(v4) => {
-                    if v4.is_private() || v4.is_loopback() || v4.is_link_local() {
-                        anyhow::bail!("Cannot connect to private/local IP addresses");
-                    }
-                }
-                IpAddr::V6(v6) => {
-                    if v6.is_loopback() {
-                        anyhow::bail!("Cannot connect to loopback addresses");
-                    }
-                }
-            }
-        }
     }
     Ok(parsed.to_string().trim_end_matches('/').to_string())
 }
@@ -116,9 +94,8 @@ impl DataStorage for RemoteStorage {
         Ok(folders)
     }
 
-    async fn save_folder(&self, account_id: &str, folder: &FolderRecord) -> Result<()> {
+    async fn save_folder(&self, _account_id: &str, folder: &FolderRecord) -> Result<()> {
         self.request(reqwest::Method::POST, "/api/folders")
-            .query(&[("account_id", account_id)])
             .json(folder)
             .send()
             .await
@@ -164,5 +141,114 @@ impl DataStorage for RemoteStorage {
             .error_for_status()
             .context("Remote returned error for save_tabs")?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── Valid URLs ──
+
+    #[test]
+    fn accepts_https_url() {
+        let result = validate_remote_url("https://example.com");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn accepts_http_url_with_port() {
+        let result = validate_remote_url("http://api.example.com:8080");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn accepts_https_url_with_path() {
+        let result = validate_remote_url("https://example.com/api/v1");
+        assert!(result.is_ok());
+    }
+
+    // ── Accepted: localhost (desktop app, no SSRF risk) ──
+
+    #[test]
+    fn accepts_localhost() {
+        let result = validate_remote_url("http://localhost");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn accepts_localhost_with_port() {
+        let result = validate_remote_url("http://localhost:3000");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn accepts_127_0_0_1() {
+        let result = validate_remote_url("http://127.0.0.1");
+        assert!(result.is_ok());
+    }
+
+    // ── Rejected: non-http schemes ──
+
+    #[test]
+    fn rejects_ftp_scheme() {
+        let result = validate_remote_url("ftp://example.com");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("http"));
+    }
+
+    #[test]
+    fn rejects_file_scheme() {
+        let result = validate_remote_url("file:///etc/passwd");
+        assert!(result.is_err());
+    }
+
+    // ── URL normalization ──
+
+    #[test]
+    fn strips_trailing_slash() {
+        let result = validate_remote_url("https://example.com/").unwrap();
+        assert!(!result.ends_with('/'));
+        assert_eq!(result, "https://example.com");
+    }
+
+    #[test]
+    fn preserves_url_without_trailing_slash() {
+        let result = validate_remote_url("https://example.com").unwrap();
+        assert_eq!(result, "https://example.com");
+    }
+
+    // ── Invalid format ──
+
+    #[test]
+    fn rejects_invalid_url() {
+        let result = validate_remote_url("not a url at all");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn rejects_empty_string() {
+        let result = validate_remote_url("");
+        assert!(result.is_err());
+    }
+
+    // ── RemoteStorage::new ──
+
+    #[test]
+    fn remote_storage_new_valid() {
+        let storage = RemoteStorage::new(
+            "https://example.com".to_string(),
+            Some("key".to_string()),
+        );
+        assert!(storage.is_ok());
+    }
+
+    #[test]
+    fn remote_storage_new_accepts_localhost() {
+        let storage = RemoteStorage::new(
+            "http://localhost:3000".to_string(),
+            None,
+        );
+        assert!(storage.is_ok());
     }
 }

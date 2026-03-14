@@ -77,3 +77,6 @@ async-trait = "0.1"
 
 # URL parsing for SSRF validation
 url = "2"
+
+[dev-dependencies]
+tempfile = "3"
