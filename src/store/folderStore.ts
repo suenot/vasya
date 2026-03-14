@@ -6,6 +6,7 @@ export type ChatTypeFilter = 'contacts' | 'non_contacts' | 'groups' | 'channels'
 export interface ChatFolder {
   id: string;
   name: string;
+  icon?: string;
   includedChatTypes: ChatTypeFilter[];
   excludedChatTypes: ChatTypeFilter[];
   includedChatIds: number[];
@@ -34,6 +35,7 @@ const DEFAULT_VISIBLE: Record<string, boolean> = {
 interface FolderRecord {
   id: string;
   name: string;
+  icon?: string;
   included_chat_types: string[];
   excluded_chat_types: string[];
   included_chat_ids: number[];
@@ -52,6 +54,7 @@ function folderFromRecord(r: FolderRecord): ChatFolder {
   return {
     id: r.id,
     name: r.name,
+    icon: r.icon,
     includedChatTypes: r.included_chat_types as ChatTypeFilter[],
     excludedChatTypes: r.excluded_chat_types as ChatTypeFilter[],
     includedChatIds: r.included_chat_ids,
@@ -64,6 +67,7 @@ function folderToRecord(f: ChatFolder): FolderRecord {
   return {
     id: f.id,
     name: f.name,
+    icon: f.icon,
     included_chat_types: f.includedChatTypes,
     excluded_chat_types: f.excludedChatTypes,
     included_chat_ids: f.includedChatIds,

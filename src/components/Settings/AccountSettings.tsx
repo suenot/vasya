@@ -13,6 +13,7 @@ import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrate
 import { CSS } from '@dnd-kit/utilities';
 import { useTranslation, useLanguageStore, LANGUAGE_LABELS, Language } from '../../i18n';
 import { useSettingsStore, StorageMode } from '../../store/settingsStore';
+import { Icon, IconName } from '../UI/Icon';
 import './AccountSettings.css';
 
 interface AccountSettingsProps {
@@ -22,9 +23,10 @@ interface AccountSettingsProps {
 type SettingsSection = 'general' | 'privacy' | 'data' | 'downloads' | 'stt' | 'hotkeys' | 'folders' | 'devices' | 'language' | 'storage';
 
 /** Sortable drag-handle tab row */
-const SortableTabItem = ({ tab, label, isBuiltin, onToggle, onDelete }: {
+const SortableTabItem = ({ tab, label, icon, isBuiltin, onToggle, onDelete }: {
   tab: TabEntry;
   label: string;
+  icon?: string;
   isBuiltin: boolean;
   onToggle: (visible: boolean) => void;
   onDelete?: () => void;
@@ -49,6 +51,7 @@ const SortableTabItem = ({ tab, label, isBuiltin, onToggle, onDelete }: {
           checked={tab.visible}
           onChange={(e) => onToggle(e.target.checked)}
         />
+        {icon && <Icon name={icon} size={18} className="filter-icon" style={{ opacity: 0.6 }} />}
         <span className="settings-item-title">{label}</span>
         {isBuiltin && <span className="tab-badge builtin">built-in</span>}
       </label>
@@ -98,6 +101,15 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [newFolderName, setNewFolderName] = useState('');
   const [selectedChatTypes, setSelectedChatTypes] = useState<ChatTypeFilter[]>([]);
+  const [selectedIcon, setSelectedIcon] = useState<string>('folder');
+
+  const { folderLayout, setFolderLayout, chatDensity, setChatDensity } = useSettingsStore();
+
+  const folderIcons: IconName[] = [
+    'folder', 'all', 'contacts', 'chats', 'favorites', 
+    'bitcoin', 'ethereum', 'trending-up', 'hash', 'book', 
+    'trophy', 'layers', 'archive'
+  ];
 
   // Storage mode
   const { storageMode, backendUrl, backendApiKey, storageSwitching, storageError, setStorageMode } = useSettingsStore();
@@ -213,6 +225,32 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
 
       <div className="settings-group">
         <h3>{t('interface')}</h3>
+        <div className="settings-item">
+          <div className="settings-item-label">
+            <div className="settings-item-title">{t('chat_density' as any)}</div>
+          </div>
+        </div>
+        <div className="stt-provider-options" style={{ marginTop: '0', padding: '0 0 12px 0' }}>
+          <label className={`stt-provider-option ${chatDensity === 'normal' ? 'active' : ''}`} style={{ padding: '8px 12px' }}>
+            <input type="radio" name="chat-density" value="normal" checked={chatDensity === 'normal'} onChange={() => setChatDensity('normal')} />
+            <div className="stt-provider-info">
+              <div className="stt-provider-name" style={{ fontSize: '14px' }}>{t('density_normal' as any)}</div>
+            </div>
+          </label>
+          <label className={`stt-provider-option ${chatDensity === 'compact' ? 'active' : ''}`} style={{ padding: '8px 12px' }}>
+            <input type="radio" name="chat-density" value="compact" checked={chatDensity === 'compact'} onChange={() => setChatDensity('compact')} />
+            <div className="stt-provider-info">
+              <div className="stt-provider-name" style={{ fontSize: '14px' }}>{t('density_compact' as any)}</div>
+            </div>
+          </label>
+          <label className={`stt-provider-option ${chatDensity === 'very-compact' ? 'active' : ''}`} style={{ padding: '8px 12px' }}>
+            <input type="radio" name="chat-density" value="very-compact" checked={chatDensity === 'very-compact'} onChange={() => setChatDensity('very-compact')} />
+            <div className="stt-provider-info">
+              <div className="stt-provider-name" style={{ fontSize: '14px' }}>{t('density_very_compact' as any)}</div>
+            </div>
+          </label>
+        </div>
+
         <div className="settings-item clickable">
           <div className="settings-item-label">
             <div className="settings-item-title">{t('interface_scale')}</div>
@@ -579,6 +617,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
       if (!newFolderName.trim()) return;
       addFolder({
         name: newFolderName,
+        icon: selectedIcon,
         includedChatTypes: selectedChatTypes,
         excludedChatTypes: [],
         includedChatIds: [],
@@ -586,20 +625,36 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
       });
       setNewFolderName('');
       setSelectedChatTypes([]);
+      setSelectedIcon('folder');
       setEditingFolderId(null);
     };
 
-    const builtinLabels: Record<string, string> = {
-      all: t('all_chats' as any) || 'All Chats',
-      contacts: t('filter_contacts'),
-      chats: t('filter_chats'),
-      favorites: t('filter_favorites'),
+    const BUILTIN_LABELS: Record<string, string> = {
+      all: 'all_chats',
+      contacts: 'filter_contacts',
+      chats: 'filter_chats',
+      favorites: 'filter_favorites',
     };
 
-    const getTabLabel = (tabId: string): string => {
-      if (builtinLabels[tabId]) return builtinLabels[tabId];
+    const getTabInfo = (tabId: string) => {
+      const builtinLabel = BUILTIN_LABELS[tabId];
+      if (builtinLabel) {
+        const iconMap: Record<string, string> = {
+          all: 'all',
+          contacts: 'contacts',
+          chats: 'chats',
+          favorites: 'favorites',
+        };
+        return {
+          label: t(builtinLabel as any) || tabId,
+          icon: iconMap[tabId] || 'folder'
+        };
+      }
       const folder = folders.find(f => f.id === tabId);
-      return folder?.name ?? tabId;
+      return {
+        label: folder?.name ?? tabId,
+        icon: folder?.icon ?? 'folder'
+      };
     };
 
     const isBuiltin = (tabId: string): boolean =>
@@ -628,6 +683,25 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
       <div className="settings-content">
         <h2>{t('nav_folders')}</h2>
 
+        {/* Layout Selection */}
+        <div className="settings-group">
+          <h3>{t('folder_layout' as any)}</h3>
+          <div className="stt-provider-options" style={{ marginTop: '12px' }}>
+            <label className={`stt-provider-option ${folderLayout === 'horizontal' ? 'active' : ''}`}>
+              <input type="radio" name="folder-layout" value="horizontal" checked={folderLayout === 'horizontal'} onChange={() => setFolderLayout('horizontal')} />
+              <div className="stt-provider-info">
+                <div className="stt-provider-name">{t('folder_layout_horizontal' as any)}</div>
+              </div>
+            </label>
+            <label className={`stt-provider-option ${folderLayout === 'vertical' ? 'active' : ''}`}>
+              <input type="radio" name="folder-layout" value="vertical" checked={folderLayout === 'vertical'} onChange={() => setFolderLayout('vertical')} />
+              <div className="stt-provider-info">
+                <div className="stt-provider-name">{t('folder_layout_vertical' as any)}</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
         {/* Tab visibility & ordering */}
         <div className="settings-group">
           <h3>{t('tabs_order_title' as any) || 'Tabs'}</h3>
@@ -642,20 +716,24 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
           >
             <SortableContext items={currentTabs.map(tab => tab.id)} strategy={verticalListSortingStrategy}>
               <div className="folders-list">
-                {currentTabs.map(tab => (
-                  <SortableTabItem
-                    key={tab.id}
-                    tab={tab}
-                    label={getTabLabel(tab.id)}
-                    isBuiltin={isBuiltin(tab.id)}
-                    onToggle={(visible) => setTabVisible(tab.id, visible)}
-                    onDelete={!isBuiltin(tab.id) ? () => {
-                      if (confirm(t('delete_folder_confirm'))) {
-                        deleteFolder(tab.id);
-                      }
-                    } : undefined}
-                  />
-                ))}
+                {currentTabs.map(tab => {
+                  const info = getTabInfo(tab.id);
+                  return (
+                    <SortableTabItem
+                      key={tab.id}
+                      tab={tab}
+                      label={info.label}
+                      icon={info.icon}
+                      isBuiltin={isBuiltin(tab.id)}
+                      onToggle={(visible) => setTabVisible(tab.id, visible)}
+                      onDelete={!isBuiltin(tab.id) ? () => {
+                        if (confirm(t('delete_folder_confirm' as any))) {
+                          deleteFolder(tab.id);
+                        }
+                      } : undefined}
+                    />
+                  );
+                })}
               </div>
             </SortableContext>
           </DndContext>
@@ -685,6 +763,22 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
                   placeholder={t('folder_name')}
                   autoFocus
                 />
+              </div>
+
+              <div className="input-group">
+                <label className="settings-item-title">{t('choose_icon' as any)}</label>
+                <div className="chat-type-chips" style={{ marginTop: '8px' }}>
+                  {folderIcons.map(icon => (
+                    <button
+                      key={icon}
+                      className={`type-chip icon-chip ${selectedIcon === icon ? 'active' : ''}`}
+                      onClick={() => setSelectedIcon(icon)}
+                      title={icon}
+                    >
+                      <Icon name={icon} size={20} />
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="input-group">

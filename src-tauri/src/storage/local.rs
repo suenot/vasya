@@ -40,6 +40,7 @@ impl LocalStorage {
         // Create unique indexes for composite key (id, account_id) — needed for ON CONFLICT
         let _ = conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_folders_id_account ON chat_folders(id, account_id)");
         let _ = conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_tabs_id_account ON chat_tabs(id, account_id)");
+        let _ = conn.execute("ALTER TABLE chat_folders ADD COLUMN icon TEXT");
 
         Ok(())
     }
@@ -148,7 +149,7 @@ impl DataStorage for LocalStorage {
         tokio::task::spawn_blocking(move || {
             let conn = conn.lock().unwrap();
             let mut stmt = conn.prepare(
-                "SELECT id, name, included_chat_types, excluded_chat_types, \
+                "SELECT id, name, icon, included_chat_types, excluded_chat_types, \
                  included_chat_ids, excluded_chat_ids, sort_order \
                  FROM chat_folders WHERE account_id = ? ORDER BY sort_order"
             ).context("prepare")?;
@@ -160,6 +161,7 @@ impl DataStorage for LocalStorage {
                     id: stmt.read::<String, _>("id").unwrap(),
                     account_id: account_id.clone(),
                     name: stmt.read::<String, _>("name").unwrap(),
+                    icon: stmt.read::<Option<String>, _>("icon").unwrap(),
                     included_chat_types: serde_json::from_str(
                         &stmt.read::<String, _>("included_chat_types").unwrap(),
                     ).unwrap_or_default(),
@@ -189,11 +191,11 @@ impl DataStorage for LocalStorage {
             let conn = conn.lock().unwrap();
             let now = LocalStorage::now_unix();
             let mut stmt = conn.prepare(
-                "INSERT INTO chat_folders (id, account_id, name, included_chat_types, excluded_chat_types, \
+                "INSERT INTO chat_folders (id, account_id, name, icon, included_chat_types, excluded_chat_types, \
                  included_chat_ids, excluded_chat_ids, sort_order, created_at, updated_at) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
                  ON CONFLICT(id, account_id) DO UPDATE SET \
-                 name=excluded.name, included_chat_types=excluded.included_chat_types, \
+                 name=excluded.name, icon=excluded.icon, included_chat_types=excluded.included_chat_types, \
                  excluded_chat_types=excluded.excluded_chat_types, \
                  included_chat_ids=excluded.included_chat_ids, \
                  excluded_chat_ids=excluded.excluded_chat_ids, \
@@ -203,13 +205,17 @@ impl DataStorage for LocalStorage {
             stmt.bind((1, folder.id.as_str())).unwrap();
             stmt.bind((2, account_id.as_str())).unwrap();
             stmt.bind((3, folder.name.as_str())).unwrap();
-            stmt.bind((4, serde_json::to_string(&folder.included_chat_types).unwrap().as_str())).unwrap();
-            stmt.bind((5, serde_json::to_string(&folder.excluded_chat_types).unwrap().as_str())).unwrap();
-            stmt.bind((6, serde_json::to_string(&folder.included_chat_ids).unwrap().as_str())).unwrap();
-            stmt.bind((7, serde_json::to_string(&folder.excluded_chat_ids).unwrap().as_str())).unwrap();
-            stmt.bind((8, folder.sort_order as i64)).unwrap();
-            stmt.bind((9, now)).unwrap();
+            match &folder.icon {
+                Some(icon) => stmt.bind((4, icon.as_str())).unwrap(),
+                None => stmt.bind((4, ())).unwrap(),
+            }
+            stmt.bind((5, serde_json::to_string(&folder.included_chat_types).unwrap().as_str())).unwrap();
+            stmt.bind((6, serde_json::to_string(&folder.excluded_chat_types).unwrap().as_str())).unwrap();
+            stmt.bind((7, serde_json::to_string(&folder.included_chat_ids).unwrap().as_str())).unwrap();
+            stmt.bind((8, serde_json::to_string(&folder.excluded_chat_ids).unwrap().as_str())).unwrap();
+            stmt.bind((9, folder.sort_order as i64)).unwrap();
             stmt.bind((10, now)).unwrap();
+            stmt.bind((11, now)).unwrap();
             stmt.next().context("execute")?;
             Ok(())
         })
@@ -315,6 +321,7 @@ mod tests {
             id: id.to_string(),
             account_id: String::new(),
             name: format!("Folder {}", id),
+            icon: Some("folder".to_string()),
             included_chat_types: vec!["group".to_string()],
             excluded_chat_types: vec![],
             included_chat_ids: vec![100],

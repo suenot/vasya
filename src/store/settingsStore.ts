@@ -4,13 +4,13 @@ import { invoke } from '@tauri-apps/api/core';
 
 export type StorageMode = 'local' | 'remote';
 
-interface StorageModePayload {
+type StorageModePayload = {
   mode: 'Local';
 } | {
   mode: 'Remote';
   url: string;
   api_key: string | null;
-}
+};
 
 interface SettingsStore {
   apiId: string | null;
@@ -25,12 +25,16 @@ interface SettingsStore {
   backendApiKey: string;
   storageSwitching: boolean;
   storageError: string | null;
+  folderLayout: 'horizontal' | 'vertical';
+  chatDensity: 'normal' | 'compact' | 'very-compact';
 
   setApiCredentials: (apiId: string, apiHash: string) => void;
   markConfigured: () => void;
   clearApiCredentials: () => void;
 
   setStorageMode: (mode: StorageMode, url?: string, apiKey?: string) => Promise<void>;
+  setFolderLayout: (layout: 'horizontal' | 'vertical') => void;
+  setChatDensity: (density: 'normal' | 'compact' | 'very-compact') => void;
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -45,6 +49,8 @@ export const useSettingsStore = create<SettingsStore>()(
       backendApiKey: '',
       storageSwitching: false,
       storageError: null,
+      folderLayout: 'horizontal',
+      chatDensity: 'normal',
 
       setApiCredentials: (apiId, apiHash) => set({
         apiId,
@@ -85,6 +91,8 @@ export const useSettingsStore = create<SettingsStore>()(
           throw err;
         }
       },
+      setFolderLayout: (layout) => set({ folderLayout: layout }),
+      setChatDensity: (density) => set({ chatDensity: density }),
     }),
     {
       name: 'telegram-settings',

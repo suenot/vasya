@@ -21,6 +21,7 @@ pub struct FolderRecord {
     pub id: String,
     pub account_id: String,
     pub name: String,
+    pub icon: Option<String>,
     pub included_chat_types: Vec<String>,
     pub excluded_chat_types: Vec<String>,
     pub included_chat_ids: Vec<i64>,
@@ -169,6 +170,7 @@ mod tests {
             id: "folder-1".to_string(),
             account_id: "acc-1".to_string(),
             name: "Work".to_string(),
+            icon: Some("briefcase".to_string()),
             included_chat_types: vec!["group".to_string(), "channel".to_string()],
             excluded_chat_types: vec![],
             included_chat_ids: vec![100, 200],
@@ -179,6 +181,7 @@ mod tests {
         let deserialized: FolderRecord = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.id, "folder-1");
         assert_eq!(deserialized.name, "Work");
+        assert_eq!(deserialized.icon, Some("briefcase".to_string()));
         assert_eq!(deserialized.included_chat_types, vec!["group", "channel"]);
         assert!(deserialized.excluded_chat_types.is_empty());
         assert_eq!(deserialized.included_chat_ids, vec![100, 200]);
@@ -192,6 +195,7 @@ mod tests {
             id: "f".to_string(),
             account_id: "acc-1".to_string(),
             name: "Empty".to_string(),
+            icon: None,
             included_chat_types: vec![],
             excluded_chat_types: vec![],
             included_chat_ids: vec![],

@@ -104,6 +104,10 @@ export const en = {
   notifications: 'Notifications',
   notification_sound: 'Notification Sound',
   message_preview: 'Message Preview',
+  chat_density: 'Chat List Density',
+  density_normal: 'Normal',
+  density_compact: 'Compact',
+  density_very_compact: 'Very Compact',
 
   // Settings - Privacy
   privacy_security: 'Privacy and Security',
@@ -210,6 +214,10 @@ export const en = {
   save_folder: 'Save Folder',
   delete_folder_confirm: 'Are you sure you want to delete this folder?',
   feature_in_dev: 'Feature in development',
+  folder_layout: 'Folders Layout',
+  folder_layout_horizontal: 'Horizontal (Tabs)',
+  folder_layout_vertical: 'Vertical (Side bar)',
+  choose_icon: 'Choose Icon',
 
   // Profile Settings
   edit_profile: 'Edit Profile',

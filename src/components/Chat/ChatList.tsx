@@ -1,8 +1,8 @@
 import { memo } from 'react';
 import { Chat } from '../../types/telegram';
-import { ChatFilters } from './ChatFilters';
 import { ChatListItem } from './ChatListItem';
 import { useTranslation } from '../../i18n';
+import { useSettingsStore } from '../../store/settingsStore';
 import './ChatList.css';
 
 interface ChatListProps {
@@ -12,8 +12,6 @@ interface ChatListProps {
   selectedChatId: number | null;
   favorites: Set<number>;
   searchQuery: string;
-  activeFilter: string;
-  onFilterChange: (filter: string) => void;
   onChatClick: (chatId: number) => void;
   onContextMenu: (e: React.MouseEvent, chatId: number) => void;
 }
@@ -25,17 +23,13 @@ export const ChatList = memo(({
   selectedChatId,
   favorites,
   searchQuery,
-  activeFilter,
-  onFilterChange,
   onChatClick,
   onContextMenu,
 }: ChatListProps) => {
   const { t } = useTranslation();
+  const chatDensity = useSettingsStore((s) => s.chatDensity);
   return (
-    <>
-      <ChatFilters activeFilter={activeFilter} onFilterChange={onFilterChange} />
-
-      <div className="chat-list">
+    <div className={`chat-list density-${chatDensity}`}>
         {loading ? (
           <div className="empty-state">
             <p>{t('loading')}</p>
@@ -69,6 +63,5 @@ export const ChatList = memo(({
           </div>
         )}
       </div>
-    </>
   );
 });

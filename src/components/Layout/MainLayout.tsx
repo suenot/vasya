@@ -4,7 +4,8 @@ import { AccountSettings } from '../Settings/AccountSettings';
 import { AccountSwitcher } from '../Accounts/AccountSwitcher';
 import { MessageList, MessageListHandle } from '../Messages/MessageList';
 import { prioritizeChat } from '../../hooks/useMediaQueue';
-import { ChatList, ChatHeader, ChatContextMenu, ChatInfoPanel } from '../Chat';
+import { ChatList, ChatHeader, ChatContextMenu, ChatInfoPanel, ChatFilters } from '../Chat';
+import { useSettingsStore } from '../../store/settingsStore';
 import { useAccountsStore } from '../../store/accountsStore';
 import { useChatsStore } from '../../store/chatsStore';
 import { useConnectionStore } from '../../store/connectionStore';
@@ -36,6 +37,7 @@ export const MainLayout = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<string>('all');
+  const folderLayout = useSettingsStore((s) => s.folderLayout);
   const folders = useFolderStore((s) => s.folders);
   const foldersLoaded = useFolderStore((s) => s.loaded);
   const loadFoldersFromDb = useFolderStore((s) => s.loadFromDb);
@@ -333,7 +335,12 @@ export const MainLayout = () => {
   }, [hotkeys, filteredChats, selectedChatId, showSettings, showChatInfo, handleChatClick]);
 
   return (
-    <div className={`main-layout ${selectedChatId ? 'chat-open' : ''}`}>
+    <div className={`main-layout ${selectedChatId ? 'chat-open' : ''} layout-${folderLayout}`}>
+      {folderLayout === 'vertical' && (
+        <aside className="folder-sidebar">
+          <ChatFilters activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+        </aside>
+      )}
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className={`sidebar-header-top ${isSearchExpanded ? 'search-active' : ''}`}>
@@ -386,7 +393,9 @@ export const MainLayout = () => {
               )}
             </div>
           </div>
-
+          {folderLayout === 'horizontal' && (
+            <ChatFilters activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+          )}
           <ChatList
             chats={filteredChats}
             loading={loading}
@@ -394,8 +403,6 @@ export const MainLayout = () => {
             selectedChatId={selectedChatId}
             favorites={favorites}
             searchQuery={searchQuery}
-            activeFilter={activeFilter}
-            onFilterChange={setActiveFilter}
             onChatClick={handleChatClick}
             onContextMenu={handleContextMenu}
           />

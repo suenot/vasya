@@ -106,6 +106,10 @@ export const ru: Record<TranslationKey, string> = {
   notifications: 'Уведомления',
   notification_sound: 'Звук уведомлений',
   message_preview: 'Предпросмотр сообщений',
+  chat_density: 'Компактность списка чатов',
+  density_normal: 'Как сейчас',
+  density_compact: 'Покомпактнее',
+  density_very_compact: 'Совсем компактно',
 
   // Settings - Privacy
   privacy_security: 'Конфиденциальность и безопасность',
@@ -212,6 +216,10 @@ export const ru: Record<TranslationKey, string> = {
   save_folder: 'Сохранить папку',
   delete_folder_confirm: 'Вы уверены, что хотите удалить эту папку?',
   feature_in_dev: 'Функция в разработке',
+  folder_layout: 'Расположение папок',
+  folder_layout_horizontal: 'Горизонтально (вкладки)',
+  folder_layout_vertical: 'Вертикально (боковая панель)',
+  choose_icon: 'Выбрать иконку',
 
   // Profile Settings
   edit_profile: 'Редактировать профиль',
