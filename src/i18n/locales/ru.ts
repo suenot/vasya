@@ -110,6 +110,8 @@ export const ru: Record<TranslationKey, string> = {
   density_normal: 'Как сейчас',
   density_compact: 'Покомпактнее',
   density_very_compact: 'Совсем компактно',
+  merge_split_messages: 'Склеивать разделённые сообщения',
+  merge_split_messages_desc: 'Автоматически объединять последовательные сообщения, разделённые Telegram',
 
   // Settings - Privacy
   privacy_security: 'Конфиденциальность и безопасность',
@@ -272,6 +274,11 @@ export const ru: Record<TranslationKey, string> = {
   folder_layout_horizontal: 'Горизонтально (вкладки)',
   folder_layout_vertical: 'Вертикально (боковая панель)',
   choose_icon: 'Выбрать иконку',
+  edit_folder: 'Редактировать папку',
+  read_all: 'Прочитать все',
+  mute_all: 'Заглушить все',
+  unmute_all: 'Снять глушение',
+  delete_folder: 'Удалить',
 
   // Profile Settings
   edit_profile: 'Редактировать профиль',
@@ -312,6 +319,16 @@ export const ru: Record<TranslationKey, string> = {
   tap_to_download: 'Нажмите для загрузки',
   loading_type: 'Загрузка {type}...',
   failed_to_load: '{type} (не удалось загрузить)',
+
+  // Forward Dialog
+  forward_to: 'Переслать в...',
+  forward_message: 'Переслать',
+  forwarded: 'Переслано!',
+  no_chats_found: 'Чаты не найдены',
+
+  // Photo Viewer
+  photo_viewer: 'Фото',
+  photos_count: 'из',
 
   // Forum Topics
   topics: 'Темы',
@@ -359,6 +376,32 @@ export const ru: Record<TranslationKey, string> = {
   call_coming_soon: 'Звонки скоро появятся',
   call_not_supported: 'Аудио/видеозвонки пока не поддерживаются',
   call_in_development: 'Функция в разработке',
+  call_incoming: 'Входящий звонок',
+  call_incoming_video: 'Входящий видеозвонок',
+  call_outgoing: 'Звоним...',
+  call_connecting: 'Подключение...',
+  call_ended: 'Звонок завершён',
+  call_accept: 'Принять',
+  call_decline: 'Отклонить',
+  call_cancel: 'Отмена',
+  call_duration: 'Длительность',
+  call_missed: 'Пропущенный звонок',
+  call_poor_connection: 'Плохое соединение',
+  call_reconnecting: 'Переподключение...',
+  call_muted: 'Микрофон выключен',
+  call_video_on: 'Камера включена',
+  call_video_off: 'Камера выключена',
+  call_screen_share: 'Демонстрация экрана',
+  call_minimize: 'Свернуть',
+
+  // Group Calls
+  group_call: 'Групповой звонок',
+  group_call_join: 'Присоединиться',
+  group_call_leave: 'Выйти',
+  group_call_participants: 'Участники',
+  group_call_speaking: 'Говорит',
+  group_call_muted: 'Микрофон выключен',
+  group_call_raise_hand: 'Поднять руку',
 
   // Search Sections
   contacts_and_chats: 'Контакты и чаты',

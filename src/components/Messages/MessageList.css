@@ -498,6 +498,78 @@
 }
 
 /* ========================================
+   Selection Mode
+   ======================================== */
+
+/* Prevent text selection during drag selection */
+.messages-container.dragging-selection {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Message row in selection mode becomes clickable */
+.message.selection-mode {
+  cursor: pointer;
+  position: relative;
+  padding-right: 44px;
+}
+
+.message.selection-mode:hover {
+  background: var(--sidebar-hover, rgba(255, 255, 255, 0.04));
+}
+
+/* Selected message highlight */
+.message.selected {
+  background: color-mix(in srgb, var(--accent-color, #3390ec) 12%, transparent);
+}
+
+.message.selected:hover {
+  background: color-mix(in srgb, var(--accent-color, #3390ec) 18%, transparent);
+}
+
+/* Checkbox — absolutely positioned on the right edge, vertically centered */
+.message-checkbox-col {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: checkbox-appear 0.15s ease-out;
+}
+
+@keyframes checkbox-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.message-checkbox {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--text-tertiary, rgba(255, 255, 255, 0.3));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.message-checkbox.checked {
+  background: var(--accent-color, #3390ec);
+  border-color: var(--accent-color, #3390ec);
+  color: #fff;
+}
+
+/* ========================================
    Blue theme: Telegram-native colors
    Outgoing bubbles get the accent tint,
    text inside stays white.
@@ -512,4 +584,75 @@
 
 :root[data-theme="blue"] .message.outgoing .status-icon.status-sent {
   color: rgba(255, 255, 255, 0.7);
+}
+
+/* ========================================
+   Merged Messages
+   ======================================== */
+
+/* Indicator: small dot + count, clickable */
+.merged-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  pointer-events: auto;
+  margin-right: 4px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: var(--accent-color, #3390ec);
+  opacity: 0.6;
+  transition: opacity 0.15s;
+  user-select: none;
+}
+
+.merged-indicator:hover {
+  opacity: 1;
+}
+
+.merged-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.merged-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1;
+}
+
+/* Expanded view: individual parts separated by thin lines */
+.merged-expanded {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.merged-expanded-part {
+  display: flex;
+  flex-direction: column;
+}
+
+.merged-separator {
+  height: 1px;
+  background: var(--border-color, rgba(0, 0, 0, 0.08));
+  margin: 4px 0;
+  opacity: 0.5;
+}
+
+/* Blue theme overrides for merged indicator */
+:root[data-theme="blue"] .message.outgoing .merged-indicator {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+:root[data-theme="blue"] .message.outgoing .merged-dot {
+  background: #fff;
+}
+
+:root[data-theme="blue"] .message.outgoing .merged-count {
+  color: #fff;
 }

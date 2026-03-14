@@ -14,6 +14,9 @@ pub mod stt;
 pub mod folders;
 pub mod topics;
 pub mod search;
+pub mod calls;
+pub mod group_calls;
+pub mod voip_sidecar;
 
 pub use auth::*;
 pub use settings::*;
@@ -24,3 +27,5 @@ pub use stt::*;
 pub use folders::*;
 pub use topics::*;
 pub use search::*;
+pub use calls::*;
+pub use group_calls::*;

@@ -3,5 +3,8 @@
 pub mod auth;
 pub mod client_manager;
 pub mod updates;
+pub mod dh;
+pub mod call_state;
+pub mod group_call_state;
 
 pub use client_manager::TelegramClientManager;

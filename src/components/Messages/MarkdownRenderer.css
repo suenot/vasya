@@ -1,0 +1,179 @@
+/* ========================================
+   Markdown Rendered Content
+   ======================================== */
+
+.md-rendered {
+  /* Reset some inherited message-text styles */
+  white-space: normal;
+  line-height: 1.5;
+}
+
+/* Paragraphs */
+.md-rendered .md-paragraph {
+  margin: 0;
+  padding: 0;
+}
+
+.md-rendered .md-paragraph + .md-paragraph {
+  margin-top: 6px;
+}
+
+/* Inline styles */
+.md-rendered .md-bold {
+  font-weight: 600;
+}
+
+.md-rendered .md-italic {
+  font-style: italic;
+}
+
+/* Inline code */
+.md-rendered .md-inline-code {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, Monaco, 'Courier New', monospace;
+  font-size: 0.9em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--md-code-bg, rgba(0, 0, 0, 0.08));
+  color: var(--md-code-color, var(--text-primary));
+  word-break: break-all;
+}
+
+/* Code blocks */
+.md-rendered .md-code-block-wrapper {
+  margin: 6px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--md-code-block-bg, rgba(0, 0, 0, 0.06));
+}
+
+.md-rendered .md-code-lang {
+  font-size: 11px;
+  padding: 4px 12px;
+  color: var(--text-tertiary);
+  background: var(--md-code-lang-bg, rgba(0, 0, 0, 0.04));
+  font-family: 'SF Mono', 'Fira Code', Menlo, Monaco, monospace;
+  user-select: none;
+}
+
+.md-rendered .md-code-block {
+  margin: 0;
+  padding: 8px 12px;
+  overflow-x: auto;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, Monaco, 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre;
+  color: var(--md-code-color, var(--text-primary));
+}
+
+/* Headings */
+.md-rendered .md-heading {
+  margin: 8px 0 4px;
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.md-rendered .md-heading:first-child {
+  margin-top: 0;
+}
+
+.md-rendered .md-h1 { font-size: 1.4em; }
+.md-rendered .md-h2 { font-size: 1.25em; }
+.md-rendered .md-h3 { font-size: 1.15em; }
+.md-rendered .md-h4 { font-size: 1.05em; }
+.md-rendered .md-h5 { font-size: 1em; }
+.md-rendered .md-h6 { font-size: 0.95em; color: var(--text-secondary); }
+
+/* Blockquotes */
+.md-rendered .md-blockquote {
+  margin: 6px 0;
+  padding: 4px 12px;
+  border-left: 3px solid var(--accent-color, #3390ec);
+  background: var(--md-blockquote-bg, rgba(0, 0, 0, 0.04));
+  border-radius: 0 6px 6px 0;
+  color: var(--text-secondary);
+}
+
+.md-rendered .md-blockquote .md-paragraph {
+  margin: 0;
+}
+
+/* Lists */
+.md-rendered .md-list {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+
+.md-rendered .md-ul {
+  list-style-type: disc;
+}
+
+.md-rendered .md-ol {
+  list-style-type: decimal;
+}
+
+.md-rendered .md-list-item {
+  margin: 2px 0;
+  padding-left: 2px;
+}
+
+/* Links */
+.md-rendered .md-link {
+  color: var(--accent-color, #3390ec);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.md-rendered .md-link:hover {
+  text-decoration: underline;
+}
+
+/* Images */
+.md-rendered .md-image {
+  max-width: 100%;
+  border-radius: 6px;
+  margin: 4px 0;
+}
+
+/* ========================================
+   Dark theme overrides
+   ======================================== */
+:root[data-theme="dark"] .md-rendered .md-inline-code,
+:root[data-theme="blue"] .md-rendered .md-inline-code {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme="dark"] .md-rendered .md-code-block-wrapper,
+:root[data-theme="blue"] .md-rendered .md-code-block-wrapper {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+:root[data-theme="dark"] .md-rendered .md-code-lang,
+:root[data-theme="blue"] .md-rendered .md-code-lang {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+:root[data-theme="dark"] .md-rendered .md-blockquote,
+:root[data-theme="blue"] .md-rendered .md-blockquote {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Outgoing messages in blue theme have white text — adjust code bg */
+:root[data-theme="blue"] .message.outgoing .md-rendered .md-inline-code {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+:root[data-theme="blue"] .message.outgoing .md-rendered .md-code-block-wrapper {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+:root[data-theme="blue"] .message.outgoing .md-rendered .md-blockquote {
+  background: rgba(255, 255, 255, 0.1);
+  border-left-color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+:root[data-theme="blue"] .message.outgoing .md-rendered .md-link {
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: underline;
+}

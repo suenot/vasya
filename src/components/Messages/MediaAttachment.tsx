@@ -179,6 +179,7 @@ export const MediaAttachment = ({
             <ImageViewer
               src={fileSrc}
               alt={currentMedia.file_name || 'Photo'}
+              caption={messageText}
               onClose={() => setViewerOpen(false)}
             />
           )}

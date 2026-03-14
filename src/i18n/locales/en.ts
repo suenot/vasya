@@ -108,6 +108,8 @@ export const en = {
   density_normal: 'Normal',
   density_compact: 'Compact',
   density_very_compact: 'Very Compact',
+  merge_split_messages: 'Merge Split Messages',
+  merge_split_messages_desc: 'Automatically combine consecutive messages that were split by Telegram',
 
   // Settings - Privacy
   privacy_security: 'Privacy and Security',
@@ -270,6 +272,11 @@ export const en = {
   folder_layout_horizontal: 'Horizontal (Tabs)',
   folder_layout_vertical: 'Vertical (Side bar)',
   choose_icon: 'Choose Icon',
+  edit_folder: 'Edit Folder',
+  read_all: 'Read All',
+  mute_all: 'Mute All',
+  unmute_all: 'Unmute All',
+  delete_folder: 'Delete',
 
   // Profile Settings
   edit_profile: 'Edit Profile',
@@ -310,6 +317,16 @@ export const en = {
   tap_to_download: 'Tap to download',
   loading_type: 'Loading {type}...',
   failed_to_load: '{type} (failed to load)',
+
+  // Forward Dialog
+  forward_to: 'Forward to...',
+  forward_message: 'Forward',
+  forwarded: 'Forwarded!',
+  no_chats_found: 'No chats found',
+
+  // Photo Viewer
+  photo_viewer: 'Photo',
+  photos_count: 'of',
 
   // Forum Topics
   topics: 'Topics',
@@ -357,6 +374,32 @@ export const en = {
   call_coming_soon: 'Calls are coming soon',
   call_not_supported: 'Audio/video calls are not yet supported',
   call_in_development: 'This feature is in development',
+  call_incoming: 'Incoming call',
+  call_incoming_video: 'Incoming video call',
+  call_outgoing: 'Calling...',
+  call_connecting: 'Connecting...',
+  call_ended: 'Call ended',
+  call_accept: 'Accept',
+  call_decline: 'Decline',
+  call_cancel: 'Cancel call',
+  call_duration: 'Duration',
+  call_missed: 'Missed call',
+  call_poor_connection: 'Poor connection',
+  call_reconnecting: 'Reconnecting...',
+  call_muted: 'Muted',
+  call_video_on: 'Camera on',
+  call_video_off: 'Camera off',
+  call_screen_share: 'Share screen',
+  call_minimize: 'Minimize',
+
+  // Group Calls
+  group_call: 'Group Call',
+  group_call_join: 'Join',
+  group_call_leave: 'Leave',
+  group_call_participants: 'Participants',
+  group_call_speaking: 'Speaking',
+  group_call_muted: 'Muted',
+  group_call_raise_hand: 'Raise hand',
 
   // Search Sections
   contacts_and_chats: 'Contacts and Chats',

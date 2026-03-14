@@ -1,10 +1,17 @@
-import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef, memo, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef, memo, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useMessagesStore, MessageBase } from '../../store/messagesStore';
+import { useSelectionStore } from '../../store/selectionStore';
+import { useSettingsStore } from '../../store/settingsStore';
 import { useTauriEvent } from '../../hooks/useTauriEvent';
+import { useMergedMessages, MergedMessageGroup } from '../../hooks/useMergedMessages';
 import { Message } from '../../types/telegram';
 import { MediaAttachment } from './MediaAttachment';
 import { MessageInput } from './MessageInput';
+import { MessageContextMenu } from './MessageContextMenu';
+import { SelectionBar } from './SelectionBar';
+import { MarkdownRenderer, hasMarkdown } from './MarkdownRenderer';
+import { ForwardDialog } from './ForwardDialog';
 import './MessageList.css';
 
 interface MessageListProps {
@@ -37,6 +44,7 @@ interface NewMessageEvent {
   date: number;
   isOutgoing: boolean;
   fromUserId?: number;
+  senderName?: string;
   hasMedia: boolean;
   mediaType?: string;
   media?: MediaInfoEvent[];
@@ -71,10 +79,18 @@ function getSenderColor(userId: number): string {
 }
 
 // Generate initials for avatar fallback
-function getInitials(userId: number): string {
-  // Without real user names, use a letter based on userId
-  const letter = String.fromCharCode(65 + (Math.abs(userId) % 26));
-  return letter;
+function getInitials(name?: string, userId?: number): string {
+  if (name) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name[0]?.toUpperCase() || '?';
+  }
+  if (userId) {
+    return String.fromCharCode(65 + (Math.abs(userId) % 26));
+  }
+  return '?';
 }
 
 // Message grouping: messages from same sender within 3 minutes
@@ -111,13 +127,18 @@ function computeGrouping(messages: MessageBase[]): GroupInfo[] {
 }
 
 // Memoized message item — only re-renders when its own props change
-const MessageItem = memo(({ message, accountId, chatId, isHighlighted, isGroupChat, groupInfo }: {
+const MessageItem = memo(({ message, accountId, chatId, isHighlighted, isGroupChat, groupInfo, isSelected, isSelectionMode, renderMarkdown, onToggleSelect, onContextMenu }: {
   message: MessageBase;
   accountId: string;
   chatId: number;
   isHighlighted?: boolean;
   isGroupChat: boolean;
   groupInfo: GroupInfo;
+  isSelected: boolean;
+  isSelectionMode: boolean;
+  renderMarkdown: boolean;
+  onToggleSelect: (id: number) => void;
+  onContextMenu: (e: React.MouseEvent, message: MessageBase) => void;
 }) => {
   const { isFirstInGroup, isLastInGroup } = groupInfo;
   const showSenderName = isGroupChat && !message.is_outgoing && isFirstInGroup && message.from_user_id;
@@ -140,17 +161,32 @@ const MessageItem = memo(({ message, accountId, chatId, isHighlighted, isGroupCh
 
   const groupSpacingClass = isFirstInGroup ? 'group-start' : 'group-continue';
 
+  const handleClick = (e: React.MouseEvent) => {
+    // Modifier clicks are handled at the container level (mousedown)
+    if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+    if (isSelectionMode) {
+      onToggleSelect(message.id);
+    }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    onContextMenu(e, message);
+  };
+
   return (
     <div
-      className={`message ${message.is_outgoing ? 'outgoing' : 'incoming'} ${groupSpacingClass}${isHighlighted ? ' highlighted' : ''}`}
+      className={`message ${message.is_outgoing ? 'outgoing' : 'incoming'} ${groupSpacingClass}${isHighlighted ? ' highlighted' : ''}${isSelected ? ' selected' : ''}${isSelectionMode ? ' selection-mode' : ''}`}
       data-message-id={message.id}
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
     >
       {/* Avatar column for incoming group messages */}
       {isGroupChat && !message.is_outgoing && (
         <div className="message-avatar-col">
           {showAvatar && message.from_user_id ? (
             <div className="message-avatar" style={{ backgroundColor: senderColor }}>
-              {getInitials(message.from_user_id)}
+              {getInitials(message.sender_name, message.from_user_id)}
             </div>
           ) : (
             <div className="message-avatar-spacer" />
@@ -162,7 +198,7 @@ const MessageItem = memo(({ message, accountId, chatId, isHighlighted, isGroupCh
         {/* Sender name for group chats */}
         {showSenderName && (
           <div className="message-sender-name" style={{ color: senderColor }}>
-            User {message.from_user_id}
+            {message.sender_name || `User ${message.from_user_id}`}
           </div>
         )}
 
@@ -183,7 +219,9 @@ const MessageItem = memo(({ message, accountId, chatId, isHighlighted, isGroupCh
 
         {message.text && (
           <div className={`message-bubble ${cornerClass}`}>
-            <div className="message-text">{message.text}</div>
+            <div className="message-text">
+              {renderMarkdown ? <MarkdownRenderer text={message.text} /> : message.text}
+            </div>
             <div className="message-meta">
               <span className="message-time">{formatTime(message.date)}</span>
               {message.is_outgoing && (
@@ -221,6 +259,163 @@ const MessageItem = memo(({ message, accountId, chatId, isHighlighted, isGroupCh
           </div>
         )}
       </div>
+
+      {/* Selection checkbox (right side) */}
+      {isSelectionMode && (
+        <div className="message-checkbox-col">
+          <div className={`message-checkbox ${isSelected ? 'checked' : ''}`}>
+            {isSelected && (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+
+// Memoized merged message item — renders a group of merged messages as one bubble
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const MergedMessageItem = memo(({ group, accountId: _aid, chatId: _cid, isHighlighted, isGroupChat, groupInfo, isSelected, isSelectionMode, onToggleSelect, onContextMenu }: {
+  group: MergedMessageGroup;
+  accountId: string;
+  chatId: number;
+  isHighlighted?: boolean;
+  isGroupChat: boolean;
+  groupInfo: GroupInfo;
+  isSelected: boolean;
+  isSelectionMode: boolean;
+  onToggleSelect: (id: number) => void;
+  onContextMenu: (e: React.MouseEvent, message: MessageBase) => void;
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  const message = group.display;
+  const mergeCount = group.messages.length;
+  const { isFirstInGroup, isLastInGroup } = groupInfo;
+  const showSenderName = isGroupChat && !message.is_outgoing && isFirstInGroup && message.from_user_id;
+  const showAvatar = isGroupChat && !message.is_outgoing && isLastInGroup;
+  const senderColor = message.from_user_id ? getSenderColor(message.from_user_id) : SENDER_COLORS[0];
+
+  let cornerClass = '';
+  if (message.is_outgoing) {
+    if (isFirstInGroup && isLastInGroup) cornerClass = 'bubble-single-out';
+    else if (isFirstInGroup) cornerClass = 'bubble-first-out';
+    else if (isLastInGroup) cornerClass = 'bubble-last-out';
+    else cornerClass = 'bubble-mid-out';
+  } else {
+    if (isFirstInGroup && isLastInGroup) cornerClass = 'bubble-single-in';
+    else if (isFirstInGroup) cornerClass = 'bubble-first-in';
+    else if (isLastInGroup) cornerClass = 'bubble-last-in';
+    else cornerClass = 'bubble-mid-in';
+  }
+
+  const groupSpacingClass = isFirstInGroup ? 'group-start' : 'group-continue';
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+    if (isSelectionMode) {
+      // In selection mode, toggle all messages in the group
+      for (const m of group.messages) {
+        onToggleSelect(m.id);
+      }
+    }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // Context menu uses the first message but with merged text
+    onContextMenu(e, { ...message, text: group.mergedText });
+  };
+
+  const handleToggleExpanded = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpanded(!expanded);
+  };
+
+  return (
+    <div
+      className={`message ${message.is_outgoing ? 'outgoing' : 'incoming'} ${groupSpacingClass}${isHighlighted ? ' highlighted' : ''}${isSelected ? ' selected' : ''}${isSelectionMode ? ' selection-mode' : ''}`}
+      data-message-id={message.id}
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
+    >
+      {isGroupChat && !message.is_outgoing && (
+        <div className="message-avatar-col">
+          {showAvatar && message.from_user_id ? (
+            <div className="message-avatar" style={{ backgroundColor: senderColor }}>
+              {getInitials(message.sender_name, message.from_user_id)}
+            </div>
+          ) : (
+            <div className="message-avatar-spacer" />
+          )}
+        </div>
+      )}
+
+      <div className="message-content">
+        {showSenderName && (
+          <div className="message-sender-name" style={{ color: senderColor }}>
+            {message.sender_name || `User ${message.from_user_id}`}
+          </div>
+        )}
+
+        <div className={`message-bubble ${cornerClass}`}>
+          {expanded ? (
+            <div className="merged-expanded">
+              {group.messages.map((m, i) => (
+                <div key={m.id} className="merged-expanded-part">
+                  <div className="message-text">{m.text}</div>
+                  {i < group.messages.length - 1 && <div className="merged-separator" />}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="message-text">{group.mergedText}</div>
+          )}
+          <div className="message-meta">
+            <span
+              className="merged-indicator"
+              title={`Merged ${mergeCount} messages`}
+              onClick={handleToggleExpanded}
+            >
+              <span className="merged-dot" />
+              <span className="merged-count">{mergeCount}</span>
+            </span>
+            <span className="message-time">{formatTime(message.date)}</span>
+            {message.is_outgoing && (
+              <span className="message-status">
+                {message._status === 'sending' ? (
+                  <svg className="status-icon" viewBox="0 0 16 16" width="16" height="16">
+                    <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="25" strokeDashoffset="8">
+                      <animateTransform attributeName="transform" type="rotate" from="0 8 8" to="360 8 8" dur="1s" repeatCount="indefinite"/>
+                    </circle>
+                  </svg>
+                ) : message._status === 'failed' ? (
+                  <span className="status-failed">!</span>
+                ) : (
+                  <svg className="status-icon status-sent" viewBox="0 0 16 11" width="16" height="11">
+                    <path d="M11.5 0.5L4.5 7.5L1.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M14.5 0.5L7.5 7.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.5"/>
+                  </svg>
+                )}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {isSelectionMode && (
+        <div className="message-checkbox-col">
+          <div className={`message-checkbox ${isSelected ? 'checked' : ''}`}>
+            {isSelected && (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 });
@@ -229,15 +424,271 @@ const MessageItem = memo(({ message, accountId, chatId, isHighlighted, isGroupCh
 // when messagesByChat[chatId] is undefined (Object.is([], []) === false)
 const EMPTY_MESSAGES: any[] = [];
 
+// Context menu state
+interface ContextMenuState {
+  x: number;
+  y: number;
+  message: MessageBase;
+}
+
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ accountId, chatId, chatTitle, chatType, highlightedMessageId, topicId, onBackToTopics }, ref) => {
   const messages = useMessagesStore((s) => s.messagesByChat[chatId] ?? EMPTY_MESSAGES);
+  const mergeEnabled = useSettingsStore((s) => s.mergeMessages);
+  const mergedGroups = useMergedMessages(messages, mergeEnabled);
   const containerRef = useRef<HTMLDivElement>(null);
   const pendingScrollRef = useRef<number | null>(null);
 
   const isGroupChat = chatType === 'group';
 
-  // Compute grouping info for all messages
-  const groupInfos = useMemo(() => computeGrouping(messages), [messages]);
+  // Selection state
+  const isSelectionMode = useSelectionStore((s) => s.isSelectionMode);
+  const selectedIds = useSelectionStore((s) => s.selectedMessageIds);
+  const lastSelectedId = useSelectionStore((s) => s.lastSelectedId);
+  const toggleMessage = useSelectionStore((s) => s.toggleMessage);
+  const selectMessage = useSelectionStore((s) => s.selectMessage);
+  const enterSelectionMode = useSelectionStore((s) => s.enterSelectionMode);
+  const exitSelectionMode = useSelectionStore((s) => s.exitSelectionMode);
+  const selectRange = useSelectionStore((s) => s.selectRange);
+
+  // Drag selection state
+  const isDraggingRef = useRef(false);
+  const dragSelectedIdsRef = useRef<Set<number>>(new Set());
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+
+  // Forward dialog state
+  const [forwardMessageIds, setForwardMessageIds] = useState<number[] | null>(null);
+
+  // Markdown rendering state
+  const markdownMode = useSettingsStore((s) => s.markdownMode);
+  // Per-message overrides: messageId -> true (force render) | false (force plain)
+  const [markdownOverrides, setMarkdownOverrides] = useState<Record<number, boolean>>({});
+
+  const handleToggleMarkdown = useCallback((messageId: number) => {
+    setMarkdownOverrides((prev) => {
+      const current = prev[messageId];
+      if (current === undefined) {
+        // No override yet — toggle opposite of global mode
+        return { ...prev, [messageId]: markdownMode !== 'rendered' };
+      }
+      // Remove override (revert to global)
+      const { [messageId]: _, ...rest } = prev;
+      return rest;
+    });
+  }, [markdownMode]);
+
+  // Determine if a specific message should render markdown
+  const shouldRenderMarkdown = useCallback((messageId: number, text?: string): boolean => {
+    if (!text || !hasMarkdown(text)) return false;
+    const override = markdownOverrides[messageId];
+    if (override !== undefined) return override;
+    return markdownMode === 'rendered';
+  }, [markdownMode, markdownOverrides]);
+
+  // Exit selection mode when switching chats
+  useEffect(() => {
+    exitSelectionMode();
+  }, [chatId, exitSelectionMode]);
+
+  // Helper: find message ID from a DOM element at coordinates
+  const getMessageIdFromPoint = useCallback((x: number, y: number): number | null => {
+    const el = document.elementFromPoint(x, y);
+    if (!el) return null;
+    const messageEl = (el as HTMLElement).closest('[data-message-id]');
+    if (!messageEl) return null;
+    const id = Number(messageEl.getAttribute('data-message-id'));
+    return isNaN(id) ? null : id;
+  }, []);
+
+  // Drag selection: mousedown on a message starts drag
+  const handleContainerMouseDown = useCallback((e: React.MouseEvent) => {
+    // Only left mouse button, ignore if target is interactive
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('a, button, input, textarea, video, audio')) return;
+
+    const messageId = getMessageIdFromPoint(e.clientX, e.clientY);
+    if (messageId === null) return;
+
+    // Cmd/Ctrl+Click: toggle single message
+    if (e.metaKey || e.ctrlKey) {
+      e.preventDefault();
+      if (!isSelectionMode) {
+        enterSelectionMode(messageId);
+      } else {
+        toggleMessage(messageId);
+      }
+      return;
+    }
+
+    // Shift+Click: range select
+    if (e.shiftKey) {
+      e.preventDefault();
+      const orderedIds = messages.map((m) => m.id);
+      if (!isSelectionMode) {
+        enterSelectionMode(messageId);
+      } else if (lastSelectedId !== null) {
+        selectRange(orderedIds, lastSelectedId, messageId);
+      } else {
+        selectMessage(messageId);
+      }
+      return;
+    }
+
+    // Plain mousedown: start drag selection (only if already in selection mode
+    // or will enter on drag). We start tracking but only commit on move.
+    isDraggingRef.current = true;
+    dragSelectedIdsRef.current = new Set();
+    dragSelectedIdsRef.current.add(messageId);
+
+    // Add container class to prevent text selection during drag
+    containerRef.current?.classList.add('dragging-selection');
+  }, [isSelectionMode, lastSelectedId, messages, getMessageIdFromPoint, enterSelectionMode, toggleMessage, selectMessage, selectRange]);
+
+  // Drag selection: mousemove adds messages under cursor
+  const handleContainerMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDraggingRef.current) return;
+    const messageId = getMessageIdFromPoint(e.clientX, e.clientY);
+    if (messageId === null) return;
+
+    if (!dragSelectedIdsRef.current.has(messageId)) {
+      dragSelectedIdsRef.current.add(messageId);
+
+      // Enter selection mode on first drag over a second message
+      if (!isSelectionMode && dragSelectedIdsRef.current.size >= 2) {
+        // Enter with all dragged IDs
+        const store = useSelectionStore.getState();
+        store.enterSelectionMode();
+        for (const id of dragSelectedIdsRef.current) {
+          store.selectMessage(id);
+        }
+      } else if (isSelectionMode) {
+        selectMessage(messageId);
+      }
+    }
+  }, [isSelectionMode, getMessageIdFromPoint, selectMessage]);
+
+  // Drag selection: mouseup ends drag
+  useEffect(() => {
+    const handleMouseUp = () => {
+      if (!isDraggingRef.current) return;
+      isDraggingRef.current = false;
+      containerRef.current?.classList.remove('dragging-selection');
+
+      // If we only clicked one message without dragging and we're in selection mode,
+      // the normal click handler in MessageItem will handle toggling.
+      // If we dragged and entered selection mode, the messages are already selected.
+      dragSelectedIdsRef.current = new Set();
+    };
+
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => window.removeEventListener('mouseup', handleMouseUp);
+  }, []);
+
+  // Ctrl+C: copy selected messages text
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape exits selection mode
+      if (e.key === 'Escape' && isSelectionMode) {
+        exitSelectionMode();
+        return;
+      }
+
+      // Ctrl+C / Cmd+C copies selected messages
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && isSelectionMode && selectedIds.size > 0) {
+        e.preventDefault();
+        const selectedMessages = messages
+          .filter((m) => selectedIds.has(m.id))
+          .sort((a, b) => a.date - b.date);
+
+        const text = selectedMessages
+          .map((m) => {
+            const name = m.sender_name || (m.is_outgoing ? 'You' : `User ${m.from_user_id || ''}`);
+            const time = formatTime(m.date);
+            return `[${time}] ${name}: ${m.text || '(media)'}`;
+          })
+          .join('\n');
+
+        navigator.clipboard.writeText(text);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSelectionMode, selectedIds, messages, exitSelectionMode]);
+
+  // Context menu handlers
+  const handleContextMenu = useCallback((e: React.MouseEvent, message: MessageBase) => {
+    setContextMenu({ x: e.clientX, y: e.clientY, message });
+  }, []);
+
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  const handleContextReply = useCallback((_messageId: number) => {
+    // TODO: implement reply
+    console.log('Reply to message:', _messageId);
+  }, []);
+
+  const handleContextForward = useCallback((messageId: number) => {
+    setForwardMessageIds([messageId]);
+  }, []);
+
+  const handleContextSelect = useCallback((messageId: number) => {
+    enterSelectionMode(messageId);
+  }, [enterSelectionMode]);
+
+  const handleContextDelete = useCallback((_messageId: number) => {
+    // TODO: implement delete
+    console.log('Delete message:', _messageId);
+  }, []);
+
+  const handleContextPin = useCallback((_messageId: number) => {
+    // TODO: implement pin
+    console.log('Pin message:', _messageId);
+  }, []);
+
+  const handleContextEdit = useCallback((_messageId: number) => {
+    // TODO: implement edit
+    console.log('Edit message:', _messageId);
+  }, []);
+
+  const handleContextCopyText = useCallback((text: string) => {
+    navigator.clipboard.writeText(text);
+  }, []);
+
+  // Selection bar handlers
+  const handleSelectionCopy = useCallback((ids: number[]) => {
+    const selected = messages
+      .filter((m) => ids.includes(m.id))
+      .sort((a, b) => a.date - b.date);
+    const text = selected
+      .map((m) => {
+        const name = m.sender_name || (m.is_outgoing ? 'You' : `User ${m.from_user_id || ''}`);
+        const time = formatTime(m.date);
+        return `[${time}] ${name}: ${m.text || '(media)'}`;
+      })
+      .join('\n');
+    navigator.clipboard.writeText(text);
+    exitSelectionMode();
+  }, [messages, exitSelectionMode]);
+
+  const handleSelectionForward = useCallback((ids: number[]) => {
+    setForwardMessageIds(ids);
+    exitSelectionMode();
+  }, [exitSelectionMode]);
+
+  const handleSelectionDelete = useCallback((_ids: number[]) => {
+    // TODO: implement bulk delete
+    console.log('Delete messages:', _ids);
+    exitSelectionMode();
+  }, [exitSelectionMode]);
+
+  // Compute grouping info based on merged groups (use display messages for grouping)
+  const displayMessages = useMemo(() => mergedGroups.map((g) => g.display), [mergedGroups]);
+  const groupInfos = useMemo(() => computeGrouping(displayMessages), [displayMessages]);
 
   // Expose scrollToMessage to parent
   useImperativeHandle(ref, () => ({
@@ -310,6 +761,18 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ ac
         });
         setMessages(chatId, fetched.reverse());
         setHasMore(chatId, fetched.length === 50);
+
+        // Mark messages as read after loading (send read acknowledgement to Telegram)
+        if (fetched.length > 0) {
+          const maxId = Math.max(...fetched.map((m) => m.id));
+          invoke('mark_messages_read', {
+            accountId,
+            chatId,
+            maxId,
+          }).catch((err: unknown) => {
+            console.error('[MessageList] Failed to mark as read on load:', err);
+          });
+        }
       } catch (err) {
         console.error('[MessageList] Failed to load messages:', err);
       } finally {
@@ -356,13 +819,25 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ ac
       id: evt.id,
       chat_id: evt.chatId,
       from_user_id: evt.fromUserId,
+      sender_name: evt.senderName || undefined,
       text: evt.text || undefined,
       date: evt.date,
       is_outgoing: evt.isOutgoing,
       media,
     });
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
-  }, [chatId, addMessage]));
+
+    // Auto-mark incoming messages as read since the user is viewing this chat
+    if (!evt.isOutgoing) {
+      invoke('mark_messages_read', {
+        accountId,
+        chatId,
+        maxId: evt.id,
+      }).catch((err: unknown) => {
+        console.error('[MessageList] Failed to auto-mark as read:', err);
+      });
+    }
+  }, [chatId, accountId, addMessage]));
 
   // Real-time: message deleted
   useTauriEvent<MessageDeletedEvent>('telegram:message-deleted', useCallback((evt) => {
@@ -416,34 +891,117 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ ac
           {chatTitle}
         </button>
       )}
-      <div className="messages-container" ref={containerRef} onScroll={handleScroll}>
+      <div
+        className="messages-container"
+        ref={containerRef}
+        onScroll={handleScroll}
+        onMouseDown={handleContainerMouseDown}
+        onMouseMove={handleContainerMouseMove}
+      >
         {loadingRef.current && messages.length === 0 ? (
           <div className="messages-loading"><p>Loading messages...</p></div>
         ) : messages.length === 0 ? (
           <div className="messages-empty"><p>No messages in {chatTitle}</p></div>
         ) : (
           <div className="messages-list">
-            {messages.map((message, index) => (
-              <MessageItem
-                key={message.id}
-                message={message}
-                accountId={accountId}
-                chatId={chatId}
-                isHighlighted={highlightedMessageId === message.id}
-                isGroupChat={isGroupChat}
-                groupInfo={groupInfos[index]}
-              />
-            ))}
+            {mergedGroups.map((group, index) => {
+              const isMerged = group.messages.length > 1;
+              const message = group.display;
+              // For merged groups, consider selected if ANY constituent is selected
+              const isGroupSelected = isMerged
+                ? group.messages.some((m) => selectedIds.has(m.id))
+                : selectedIds.has(message.id);
+              const isGroupHighlighted = isMerged
+                ? group.messages.some((m) => highlightedMessageId === m.id)
+                : highlightedMessageId === message.id;
+
+              if (isMerged) {
+                return (
+                  <MergedMessageItem
+                    key={`merged-${message.id}`}
+                    group={group}
+                    accountId={accountId}
+                    chatId={chatId}
+                    isHighlighted={isGroupHighlighted}
+                    isGroupChat={isGroupChat}
+                    groupInfo={groupInfos[index]}
+                    isSelected={isGroupSelected}
+                    isSelectionMode={isSelectionMode}
+                    onToggleSelect={toggleMessage}
+                    onContextMenu={handleContextMenu}
+                  />
+                );
+              }
+
+              return (
+                <MessageItem
+                  key={message.id}
+                  message={message}
+                  accountId={accountId}
+                  chatId={chatId}
+                  isHighlighted={isGroupHighlighted}
+                  isGroupChat={isGroupChat}
+                  groupInfo={groupInfos[index]}
+                  isSelected={isGroupSelected}
+                  isSelectionMode={isSelectionMode}
+                  renderMarkdown={shouldRenderMarkdown(message.id, message.text)}
+                  onToggleSelect={toggleMessage}
+                  onContextMenu={handleContextMenu}
+                />
+              );
+            })}
             <div ref={messagesEndRef} />
           </div>
         )}
       </div>
-      <MessageInput
-        accountId={accountId}
-        chatId={chatId}
-        topicId={topicId}
-        onMessageSent={handleMessageSent}
-      />
+
+      {/* Selection bar replaces input when in selection mode */}
+      {isSelectionMode ? (
+        <SelectionBar
+          onCopy={handleSelectionCopy}
+          onForward={handleSelectionForward}
+          onDelete={handleSelectionDelete}
+        />
+      ) : (
+        <MessageInput
+          accountId={accountId}
+          chatId={chatId}
+          topicId={topicId}
+          onMessageSent={handleMessageSent}
+        />
+      )}
+
+      {/* Context menu */}
+      {contextMenu && (
+        <MessageContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          messageId={contextMenu.message.id}
+          messageText={contextMenu.message.text}
+          isOutgoing={contextMenu.message.is_outgoing}
+          hasMedia={!!(contextMenu.message.media && contextMenu.message.media.length > 0)}
+          isMarkdownRendered={shouldRenderMarkdown(contextMenu.message.id, contextMenu.message.text)}
+          hasMarkdownContent={!!(contextMenu.message.text && hasMarkdown(contextMenu.message.text))}
+          onClose={handleCloseContextMenu}
+          onReply={handleContextReply}
+          onForward={handleContextForward}
+          onSelect={handleContextSelect}
+          onDelete={handleContextDelete}
+          onPin={handleContextPin}
+          onEdit={handleContextEdit}
+          onCopyText={handleContextCopyText}
+          onToggleMarkdown={handleToggleMarkdown}
+        />
+      )}
+
+      {forwardMessageIds && (
+        <ForwardDialog
+          accountId={accountId}
+          fromChatId={chatId}
+          messageIds={forwardMessageIds}
+          onClose={() => setForwardMessageIds(null)}
+        />
+      )}
     </div>
   );
 });

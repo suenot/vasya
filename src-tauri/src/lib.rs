@@ -18,6 +18,12 @@ pub struct AppState {
     pub pending_logins: Mutex<HashMap<String, grammers_client::types::LoginToken>>,
     /// Pending 2FA password tokens (account_id -> PasswordToken)
     pub pending_passwords: Mutex<HashMap<String, grammers_client::types::PasswordToken>>,
+    /// Active voice/video calls
+    pub active_calls: Arc<RwLock<telegram::call_state::ActiveCalls>>,
+    /// Active group calls
+    pub active_group_calls: Arc<RwLock<telegram::group_call_state::ActiveGroupCalls>>,
+    /// VoIP sidecar process handle
+    pub voip_sidecar: Option<commands::voip_sidecar::VoipSidecarHandle>,
     #[allow(dead_code)]
     _logger_guard: Option<tracing_appender::non_blocking::WorkerGuard>,
 }
@@ -29,6 +35,9 @@ impl Default for AppState {
             client_manager: None,
             pending_logins: Mutex::new(HashMap::new()),
             pending_passwords: Mutex::new(HashMap::new()),
+            active_calls: Arc::new(RwLock::new(telegram::call_state::ActiveCalls::default())),
+            active_group_calls: Arc::new(RwLock::new(telegram::group_call_state::ActiveGroupCalls::default())),
+            voip_sidecar: None,
             _logger_guard: None,
         }
     }
@@ -43,6 +52,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_notification::init())
         .manage(Arc::new(RwLock::new(initial_state)))
         .invoke_handler(tauri::generate_handler![
             commands::request_login_code,
@@ -57,8 +67,11 @@ pub fn run() {
             commands::get_messages,
             commands::send_message,
             commands::send_media,
+            commands::forward_messages,
             commands::download_media,
             commands::download_chat_photo,
+            commands::get_user_photos,
+            commands::mark_messages_read,
             commands::search_messages,
             commands::get_my_avatar,
             commands::delete_and_leave_chat,
@@ -77,6 +90,17 @@ pub fn run() {
             commands::get_forum_topics,
             commands::global_search,
             commands::search_all_messages,
+            commands::request_call,
+            commands::accept_call,
+            commands::confirm_call,
+            commands::discard_call,
+            commands::toggle_call_mute,
+            commands::set_call_volume,
+            commands::create_group_call,
+            commands::join_group_call,
+            commands::leave_group_call,
+            commands::toggle_group_call_mute,
+            commands::get_group_call_participants,
         ])
         .setup(|app| {
             let app_dir = app

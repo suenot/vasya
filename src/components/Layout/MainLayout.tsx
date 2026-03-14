@@ -11,8 +11,10 @@ import { useChatsStore } from '../../store/chatsStore';
 import { useConnectionStore } from '../../store/connectionStore';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useTauriEvent } from '../../hooks/useTauriEvent';
+import { useNotifications } from '../../hooks/useNotifications';
 import { useHotkeysStore } from '../../store/hotkeysStore';
 import { useMuteStore } from '../../store/muteStore';
+import { useSelectionStore } from '../../store/selectionStore';
 import { useFolderStore } from '../../store/folderStore';
 import { Chat, ForumTopic, GlobalSearchResult, GlobalMessageResult } from '../../types/telegram';
 import { useTranslation } from '../../i18n';
@@ -56,6 +58,9 @@ export const MainLayout = () => {
   const chatHeaderRef = useRef<ChatHeaderHandle>(null);
   const chatListRef = useRef<HTMLDivElement>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+
+  // Native OS notifications for incoming messages
+  useNotifications(selectedChatId);
 
   const debouncedSearch = useDebounce(searchQuery, 200);
 
@@ -224,7 +229,7 @@ export const MainLayout = () => {
 
   // Filtered chats — memoized with debounced search
   const filteredChats = useMemo(() => {
-    return chats.filter((chat) => {
+    const filtered = chats.filter((chat) => {
       if (debouncedSearch.trim()) {
         const q = debouncedSearch.toLowerCase();
         if (
@@ -267,6 +272,15 @@ export const MainLayout = () => {
         }
       }
     });
+
+    // All folders except "all": unread chats first, preserving relative order within each group
+    if (activeFilter !== 'all') {
+      const unread = filtered.filter(c => c.unreadCount > 0);
+      const read = filtered.filter(c => c.unreadCount === 0);
+      return [...unread, ...read];
+    }
+
+    return filtered;
   }, [chats, debouncedSearch, activeFilter, favorites, folders]);
 
   // Global search effect (contacts.Search)
@@ -360,11 +374,106 @@ export const MainLayout = () => {
     setGlobalSearchLimit((prev) => prev + 20);
   }, []);
 
+  // Mark chat as read locally (optimistic update for unread badge)
+  const clearUnreadCount = useCallback((chatId: number) => {
+    if (!activeAccount) return;
+    const chat = chats.find((c) => c.id === chatId);
+    if (!chat || chat.unreadCount === 0) return;
+
+    // Update local state immediately (optimistic)
+    setChats((prev) => prev.map((c) =>
+      c.id === chatId ? { ...c, unreadCount: 0 } : c
+    ));
+    // Also update the loadedChatsArr for consistency
+    const idx = loadedChatsArr.findIndex((c) => c.id === chatId);
+    if (idx !== -1) {
+      loadedChatsArr[idx] = { ...loadedChatsArr[idx], unreadCount: 0 };
+    }
+    // Update persisted chats store
+    useChatsStore.getState().updateUnreadCount(activeAccount.id, chatId, 0);
+  }, [activeAccount, chats, loadedChatsArr]);
+
+  // Mark messages as read via context menu (without opening the chat)
+  const markChatAsRead = useCallback(async (chatId: number) => {
+    if (!activeAccount) return;
+    clearUnreadCount(chatId);
+
+    // Use max_id=2147483647 (i32::MAX) to mark all messages as read
+    try {
+      await invoke('mark_messages_read', {
+        accountId: activeAccount.id,
+        chatId,
+        maxId: 2147483647,
+      });
+    } catch (err) {
+      console.error('[MainLayout] Failed to mark messages as read:', err);
+    }
+  }, [activeAccount, clearUnreadCount]);
+
+  // Read All chats in a folder/filter
+  const handleReadAllFolder = useCallback((folderId: string) => {
+    const unreadChats = chats.filter(c => c.unreadCount > 0);
+    const chatsInFolder = unreadChats.filter(chat => {
+      switch (folderId) {
+        case 'all': return true;
+        case 'contacts': return chat.chatType === 'user' && !chat.username?.toLowerCase().includes('bot');
+        case 'chats': return chat.chatType === 'group' || chat.chatType === 'channel';
+        case 'favorites': return favorites.has(chat.id);
+        default: {
+          const folder = folders.find(f => f.id === folderId);
+          if (!folder) return false;
+          if (folder.excludedChatIds.includes(chat.id)) return false;
+          if (folder.includedChatIds.includes(chat.id)) return true;
+          let chatType: 'contacts' | 'non_contacts' | 'groups' | 'channels' | 'bots' = 'non_contacts';
+          if (chat.chatType === 'user') chatType = chat.username?.toLowerCase().includes('bot') ? 'bots' : 'contacts';
+          else if (chat.chatType === 'group') chatType = 'groups';
+          else if (chat.chatType === 'channel') chatType = 'channels';
+          if (folder.excludedChatTypes.includes(chatType)) return false;
+          if (folder.includedChatTypes.includes(chatType)) return true;
+          return false;
+        }
+      }
+    });
+    chatsInFolder.forEach(chat => markChatAsRead(chat.id));
+  }, [chats, favorites, folders, markChatAsRead]);
+
+  // Mute All chats in a folder/filter
+  const handleMuteAllFolder = useCallback((folderId: string) => {
+    const chatsInFolder = chats.filter(chat => {
+      switch (folderId) {
+        case 'all': return true;
+        case 'contacts': return chat.chatType === 'user' && !chat.username?.toLowerCase().includes('bot');
+        case 'chats': return chat.chatType === 'group' || chat.chatType === 'channel';
+        case 'favorites': return favorites.has(chat.id);
+        default: {
+          const folder = folders.find(f => f.id === folderId);
+          if (!folder) return false;
+          if (folder.excludedChatIds.includes(chat.id)) return false;
+          if (folder.includedChatIds.includes(chat.id)) return true;
+          let chatType: 'contacts' | 'non_contacts' | 'groups' | 'channels' | 'bots' = 'non_contacts';
+          if (chat.chatType === 'user') chatType = chat.username?.toLowerCase().includes('bot') ? 'bots' : 'contacts';
+          else if (chat.chatType === 'group') chatType = 'groups';
+          else if (chat.chatType === 'channel') chatType = 'channels';
+          if (folder.excludedChatTypes.includes(chatType)) return false;
+          if (folder.includedChatTypes.includes(chatType)) return true;
+          return false;
+        }
+      }
+    });
+    const { toggleMute, isMuted } = useMuteStore.getState();
+    chatsInFolder.forEach(chat => {
+      if (!isMuted(chat.id)) toggleMute(chat.id);
+    });
+  }, [chats, favorites, folders]);
+
   const handleChatClick = useCallback((chatId: number) => {
     setSelectedChatId(chatId);
     setSelectedTopic(null); // Reset topic when switching chats
     prioritizeChat(chatId);
-  }, []);
+    // Clear unread badge immediately; the actual read acknowledgement
+    // will be sent by MessageList after messages load with the correct max_id
+    clearUnreadCount(chatId);
+  }, [clearUnreadCount]);
 
   const toggleFavorite = useCallback((chatId: number) => {
     setFavorites((prev) => {
@@ -413,6 +522,8 @@ export const MainLayout = () => {
   // Global Hotkeys Listener
   const hotkeys = useHotkeysStore((s) => s.hotkeys);
   const toggleMute = useMuteStore((s) => s.toggleMute);
+  const isSelectionMode = useSelectionStore((s) => s.isSelectionMode);
+  const exitSelectionMode = useSelectionStore((s) => s.exitSelectionMode);
   const visibleTabs = useFolderStore((s) => s.getVisibleTabs)();
 
   useEffect(() => {
@@ -502,6 +613,11 @@ export const MainLayout = () => {
         if (selectedTopic) {
           e.preventDefault();
           setSelectedTopic(null);
+          return;
+        }
+        if (isSelectionMode) {
+          e.preventDefault();
+          exitSelectionMode();
           return;
         }
         if (selectedChatId) {
@@ -681,7 +797,7 @@ export const MainLayout = () => {
     <div className={`main-layout ${selectedChatId ? 'chat-open' : ''} layout-${folderLayout}`}>
       {folderLayout === 'vertical' && (
         <aside className="folder-sidebar">
-          <ChatFilters activeFilter={activeFilter} onFilterChange={setActiveFilter} unreadCounts={unreadCounts} />
+          <ChatFilters activeFilter={activeFilter} onFilterChange={setActiveFilter} unreadCounts={unreadCounts} onReadAll={handleReadAllFolder} onMuteAll={handleMuteAllFolder} />
         </aside>
       )}
       <aside className="sidebar">
@@ -741,9 +857,9 @@ export const MainLayout = () => {
             </div>
           </div>
           {folderLayout === 'horizontal' && (
-            <ChatFilters activeFilter={activeFilter} onFilterChange={setActiveFilter} unreadCounts={unreadCounts} />
+            <ChatFilters activeFilter={activeFilter} onFilterChange={setActiveFilter} unreadCounts={unreadCounts} onReadAll={handleReadAllFolder} onMuteAll={handleMuteAllFolder} />
           )}
-          <div ref={chatListRef}>
+          <div ref={chatListRef} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             <ChatList
               chats={filteredChats}
               loading={loading}
@@ -809,23 +925,31 @@ export const MainLayout = () => {
         </div>
 
         {showChatInfo && selectedChat && (
-          <ChatInfoPanel chat={selectedChat} onClose={() => setShowChatInfo(false)} />
+          <ChatInfoPanel chat={selectedChat} accountId={activeAccountId!} onClose={() => setShowChatInfo(false)} />
         )}
       </main>
 
       {showSettings && <AccountSettings onClose={() => setShowSettings(false)} />}
 
       {
-        contextMenu && (
-          <ChatContextMenu
-            x={contextMenu.x}
-            y={contextMenu.y}
-            chatId={contextMenu.chatId}
-            isFavorite={favorites.has(contextMenu.chatId)}
-            onToggleFavorite={toggleFavorite}
-            onClose={closeContextMenu}
-          />
-        )
+        contextMenu && (() => {
+          const chat = chats.find(c => c.id === contextMenu.chatId);
+          return (
+            <ChatContextMenu
+              x={contextMenu.x}
+              y={contextMenu.y}
+              chatId={contextMenu.chatId}
+              chatType={chat?.chatType}
+              chatTitle={chat?.title}
+              unreadCount={chat?.unreadCount}
+              isFavorite={favorites.has(contextMenu.chatId)}
+              onToggleFavorite={toggleFavorite}
+              onMarkAsRead={(id) => { markChatAsRead(id); }}
+              onDelete={(id) => { console.log('Delete/Leave chat:', id); }}
+              onClose={closeContextMenu}
+            />
+          );
+        })()
       }
     </div >
   );

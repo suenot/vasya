@@ -45,6 +45,7 @@ export interface Message {
   chat_id: number;
   account_id: string;
   from_user_id?: number;
+  sender_name?: string;
   text?: string;
   date: number;
   edit_date?: number;

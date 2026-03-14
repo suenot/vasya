@@ -103,7 +103,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
   const [selectedChatTypes, setSelectedChatTypes] = useState<ChatTypeFilter[]>([]);
   const [selectedIcon, setSelectedIcon] = useState<string>('folder');
 
-  const { folderLayout, setFolderLayout, chatDensity, setChatDensity } = useSettingsStore();
+  const { folderLayout, setFolderLayout, chatDensity, setChatDensity, mergeMessages, setMergeMessages } = useSettingsStore();
 
   const folderIcons: IconName[] = [
     'folder', 'all', 'contacts', 'chats', 'favorites', 
@@ -264,6 +264,17 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
             <div className="settings-item-description">{t('medium')}</div>
           </div>
           <div className="settings-item-arrow">›</div>
+        </div>
+
+        <div className="settings-item toggle">
+          <div className="settings-item-label">
+            <div className="settings-item-title">{t('merge_split_messages' as any)}</div>
+            <div className="settings-item-description">{t('merge_split_messages_desc' as any)}</div>
+          </div>
+          <label className="toggle-switch">
+            <input type="checkbox" checked={mergeMessages} onChange={(e) => setMergeMessages(e.target.checked)} />
+            <span className="toggle-slider"></span>
+          </label>
         </div>
       </div>
 

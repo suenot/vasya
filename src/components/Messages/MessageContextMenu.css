@@ -1,0 +1,126 @@
+.message-context-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+}
+
+.message-context-menu {
+  position: fixed;
+  z-index: 1001;
+  background: var(--bg-secondary, rgba(30, 30, 30, 0.98));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  padding: 0;
+  min-width: 200px;
+  animation: context-menu-in 0.15s ease-out;
+  overflow: hidden;
+}
+
+@keyframes context-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Emoji reaction bar */
+.context-menu-emoji-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 8px 4px;
+}
+
+.context-menu-emoji-btn {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 22px;
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.15s;
+  line-height: 1;
+  padding: 0;
+}
+
+.context-menu-emoji-btn:hover {
+  background: var(--sidebar-hover, rgba(255, 255, 255, 0.08));
+  transform: scale(1.15);
+}
+
+.context-menu-emoji-btn:active {
+  transform: scale(0.95);
+}
+
+/* Divider */
+.context-menu-divider {
+  height: 1px;
+  background: var(--border-color, rgba(255, 255, 255, 0.08));
+  margin: 4px 0;
+}
+
+/* Menu items section */
+.context-menu-items {
+  padding: 4px 0;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary, #fff);
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.context-menu-item:hover {
+  background: var(--sidebar-hover, rgba(255, 255, 255, 0.08));
+}
+
+.context-menu-item:active {
+  background: color-mix(in srgb, var(--sidebar-hover, rgba(255, 255, 255, 0.08)) 80%, var(--accent-color, #7c4dff) 20%);
+}
+
+.context-menu-item-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.5));
+}
+
+.context-menu-item-label {
+  flex: 1;
+}
+
+/* Delete item styling */
+.context-menu-item--danger {
+  color: #e53935;
+}
+
+.context-menu-item--danger .context-menu-item-icon {
+  color: #e53935;
+}

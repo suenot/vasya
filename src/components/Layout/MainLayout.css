@@ -714,6 +714,19 @@
   animation: contextMenuFadeIn 0.1s ease-out;
 }
 
+.context-menu .context-menu-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 0;
+}
+
+.context-menu-item--danger {
+  color: #e53935 !important;
+}
+
+.context-menu-item--danger svg {
+  color: #e53935;
+}
 
 /* Header Search Bar */
 .header-search {

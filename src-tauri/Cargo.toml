@@ -1,6 +1,6 @@
 [package]
 name = "telegram-client"
-version = "0.5.0"
+version = "0.6.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
@@ -67,6 +67,7 @@ lazy_static = "1.5"
 json5 = "0.4"
 
 tauri-plugin-clipboard-manager = "2"
+tauri-plugin-notification = "2"
 
 # HTTP client for Deepgram STT API and RemoteStorage
 # Use rustls instead of openssl for Android compatibility
@@ -77,6 +78,13 @@ async-trait = "0.1"
 
 # URL parsing for SSRF validation
 url = "2"
+
+# DH key exchange for Telegram voice calls
+num-bigint = "0.4"
+num-traits = "0.2"
+num-integer = "0.1"
+rand = "0.8"
+sha1 = "0.10"
 
 [dev-dependencies]
 tempfile = "3"

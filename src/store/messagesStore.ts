@@ -5,6 +5,7 @@ export interface MessageBase {
   id: number;
   chat_id: number;
   from_user_id?: number;
+  sender_name?: string;
   text?: string;
   date: number;
   is_outgoing: boolean;

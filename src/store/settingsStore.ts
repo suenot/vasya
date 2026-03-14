@@ -27,6 +27,8 @@ interface SettingsStore {
   storageError: string | null;
   folderLayout: 'horizontal' | 'vertical';
   chatDensity: 'normal' | 'compact' | 'very-compact';
+  markdownMode: 'plain' | 'rendered';
+  mergeMessages: boolean;
 
   setApiCredentials: (apiId: string, apiHash: string) => void;
   markConfigured: () => void;
@@ -35,6 +37,8 @@ interface SettingsStore {
   setStorageMode: (mode: StorageMode, url?: string, apiKey?: string) => Promise<void>;
   setFolderLayout: (layout: 'horizontal' | 'vertical') => void;
   setChatDensity: (density: 'normal' | 'compact' | 'very-compact') => void;
+  setMarkdownMode: (mode: 'plain' | 'rendered') => void;
+  setMergeMessages: (merge: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -51,6 +55,8 @@ export const useSettingsStore = create<SettingsStore>()(
       storageError: null,
       folderLayout: 'horizontal',
       chatDensity: 'normal',
+      markdownMode: 'plain' as const,
+      mergeMessages: true,
 
       setApiCredentials: (apiId, apiHash) => set({
         apiId,
@@ -93,6 +99,8 @@ export const useSettingsStore = create<SettingsStore>()(
       },
       setFolderLayout: (layout) => set({ folderLayout: layout }),
       setChatDensity: (density) => set({ chatDensity: density }),
+      setMarkdownMode: (mode) => set({ markdownMode: mode }),
+      setMergeMessages: (merge) => set({ mergeMessages: merge }),
     }),
     {
       name: 'telegram-settings',

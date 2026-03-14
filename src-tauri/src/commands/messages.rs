@@ -26,6 +26,7 @@ pub struct Message {
     pub id: i32,
     pub chat_id: i64,
     pub from_user_id: Option<i64>,
+    pub sender_name: Option<String>,
     pub text: Option<String>,
     pub date: i64,
     pub is_outgoing: bool,
@@ -109,12 +110,30 @@ pub async fn get_messages(
             .await
             .map_err(|e| format!("Failed to get topic messages: {}", e))?;
 
-        let raw_messages = match result {
-            grammers_tl_types::enums::messages::Messages::Messages(m) => m.messages,
-            grammers_tl_types::enums::messages::Messages::Slice(m) => m.messages,
-            grammers_tl_types::enums::messages::Messages::ChannelMessages(m) => m.messages,
-            grammers_tl_types::enums::messages::Messages::NotModified(_) => Vec::new(),
+        let (raw_messages, raw_users, raw_chats) = match result {
+            grammers_tl_types::enums::messages::Messages::Messages(m) => (m.messages, m.users, m.chats),
+            grammers_tl_types::enums::messages::Messages::Slice(m) => (m.messages, m.users, m.chats),
+            grammers_tl_types::enums::messages::Messages::ChannelMessages(m) => (m.messages, m.users, m.chats),
+            grammers_tl_types::enums::messages::Messages::NotModified(_) => (Vec::new(), Vec::new(), Vec::new()),
         };
+
+        // Build user/chat name lookup
+        let mut names: std::collections::HashMap<i64, String> = std::collections::HashMap::new();
+        for user in &raw_users {
+            if let grammers_tl_types::enums::User::User(u) = user {
+                let first = u.first_name.as_deref().unwrap_or("");
+                let last = u.last_name.as_deref().unwrap_or("");
+                let name = if last.is_empty() { first.to_string() } else { format!("{} {}", first, last) };
+                names.insert(u.id, name);
+            }
+        }
+        for chat in &raw_chats {
+            match chat {
+                grammers_tl_types::enums::Chat::Channel(ch) => { names.insert(ch.id, ch.title.clone()); }
+                grammers_tl_types::enums::Chat::Chat(ch) => { names.insert(ch.id, ch.title.clone()); }
+                _ => {}
+            }
+        }
 
         let messages: Vec<Message> = raw_messages
             .into_iter()
@@ -126,10 +145,19 @@ pub async fn get_messages(
                             grammers_tl_types::enums::Peer::Chat(c) => c.chat_id,
                             grammers_tl_types::enums::Peer::Channel(c) => c.channel_id,
                         });
+                        let sender_name = msg.from_id.as_ref().and_then(|p| {
+                            let id = match p {
+                                grammers_tl_types::enums::Peer::User(u) => u.user_id,
+                                grammers_tl_types::enums::Peer::Chat(c) => c.chat_id,
+                                grammers_tl_types::enums::Peer::Channel(c) => c.channel_id,
+                            };
+                            names.get(&id).cloned()
+                        });
                         Some(Message {
                             id: msg.id,
                             chat_id,
                             from_user_id,
+                            sender_name,
                             text: if msg.message.is_empty() { None } else { Some(msg.message) },
                             date: msg.date as i64,
                             is_outgoing: msg.out,
@@ -160,10 +188,12 @@ pub async fn get_messages(
         .await
         .map_err(|e| format!("Failed to get messages: {}", e))?
     {
+        let sender = msg.sender();
         messages.push(Message {
             id: msg.id(),
             chat_id,
-            from_user_id: msg.sender().map(|s| PeerRef::from(s).id.bot_api_dialog_id()),
+            from_user_id: sender.as_ref().map(|s| PeerRef::from(&**s).id.bot_api_dialog_id()),
+            sender_name: sender.and_then(|s| s.name().map(|n| n.to_string())),
             text: if msg.text().is_empty() {
                 None
             } else {
@@ -182,6 +212,67 @@ pub async fn get_messages(
 
     tracing::info!(count = messages.len(), chat_id = chat_id, "Messages loaded");
     Ok(messages)
+}
+
+/// Mark messages as read in a chat (sends read acknowledgement to Telegram)
+#[tauri::command]
+pub async fn mark_messages_read(
+    account_id: String,
+    chat_id: i64,
+    max_id: i32,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<(), String> {
+    tracing::info!(
+        account_id = %account_id,
+        chat_id = chat_id,
+        max_id = max_id,
+        "Marking messages as read"
+    );
+
+    let wrapper = {
+        let state_guard = state.read().await;
+        let client_manager = state_guard
+            .client_manager
+            .as_ref()
+            .ok_or("Client manager not initialized")?;
+        client_manager
+            .get_client(&account_id)
+            .await
+            .ok_or("Client not found for this account")?
+    };
+
+    let chat = resolve_peer(&wrapper, chat_id).await?;
+
+    // Determine peer type and call appropriate ReadHistory
+    match &chat {
+        grammers_client::types::Peer::Channel(channel) => {
+            // Channels and supergroups use channels.ReadHistory
+            let ch = &channel.raw;
+            let input_channel = grammers_tl_types::enums::InputChannel::Channel(
+                grammers_tl_types::types::InputChannel {
+                    channel_id: ch.id,
+                    access_hash: ch.access_hash.unwrap_or(0),
+                }
+            );
+
+            wrapper.client.invoke(&grammers_tl_types::functions::channels::ReadHistory {
+                channel: input_channel,
+                max_id,
+            }).await.map_err(|e| format!("Failed to mark channel messages as read: {}", e))?;
+        }
+        _ => {
+            // Users and basic groups use messages.ReadHistory
+            let input_peer: grammers_tl_types::enums::InputPeer = PeerRef::from(&chat).into();
+
+            wrapper.client.invoke(&grammers_tl_types::functions::messages::ReadHistory {
+                peer: input_peer,
+                max_id,
+            }).await.map_err(|e| format!("Failed to mark messages as read: {}", e))?;
+        }
+    }
+
+    tracing::info!(account_id = %account_id, chat_id = chat_id, "Messages marked as read");
+    Ok(())
 }
 
 /// Search messages in a chat
@@ -229,10 +320,12 @@ pub async fn search_messages(
         .await
         .map_err(|e| format!("Failed to search messages: {}", e))?
     {
+        let sender = msg.sender();
         messages.push(Message {
             id: msg.id(),
             chat_id,
-            from_user_id: msg.sender().map(|s| PeerRef::from(s).id.bot_api_dialog_id()),
+            from_user_id: sender.as_ref().map(|s| PeerRef::from(&**s).id.bot_api_dialog_id()),
+            sender_name: sender.and_then(|s| s.name().map(|n| n.to_string())),
             text: if msg.text().is_empty() {
                 None
             } else {
@@ -297,12 +390,12 @@ pub async fn send_message(
 
     tracing::info!(msg_id = sent_message.id(), "Message sent");
 
+    let sender = sent_message.sender();
     Ok(Message {
         id: sent_message.id(),
         chat_id,
-        from_user_id: sent_message
-            .sender()
-            .map(|s| PeerRef::from(s).id.bot_api_dialog_id()),
+        from_user_id: sender.as_ref().map(|s| PeerRef::from(&**s).id.bot_api_dialog_id()),
+        sender_name: sender.and_then(|s| s.name().map(|n| n.to_string())),
         text: Some(text),
         date: sent_message.date().timestamp(),
         is_outgoing: true,
@@ -402,17 +495,69 @@ pub async fn send_media(
         }]
     });
 
+    let sender = sent_message.sender();
     Ok(Message {
         id: sent_message.id(),
         chat_id,
-        from_user_id: sent_message
-            .sender()
-            .map(|s| PeerRef::from(s).id.bot_api_dialog_id()),
+        from_user_id: sender.as_ref().map(|s| PeerRef::from(&**s).id.bot_api_dialog_id()),
+        sender_name: sender.and_then(|s| s.name().map(|n| n.to_string())),
         text: if sent_message.text().is_empty() { None } else { Some(sent_message.text().to_string()) },
         date: sent_message.date().timestamp(),
         is_outgoing: true,
         media,
     })
+}
+
+/// Forward messages from one chat to another
+#[tauri::command]
+pub async fn forward_messages(
+    account_id: String,
+    from_chat_id: i64,
+    to_chat_id: i64,
+    message_ids: Vec<i32>,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<Vec<Option<i32>>, String> {
+    tracing::info!(
+        account_id = %account_id,
+        from_chat_id = from_chat_id,
+        to_chat_id = to_chat_id,
+        message_count = message_ids.len(),
+        "Forwarding messages"
+    );
+
+    let wrapper = {
+        let state_guard = state.read().await;
+        let client_manager = state_guard
+            .client_manager
+            .as_ref()
+            .ok_or("Client manager not initialized")?;
+        client_manager
+            .get_client(&account_id)
+            .await
+            .ok_or("Client not found for this account")?
+    };
+
+    let from_peer = resolve_peer(&wrapper, from_chat_id).await?;
+    let to_peer = resolve_peer(&wrapper, to_chat_id).await?;
+
+    let forwarded = wrapper
+        .client
+        .forward_messages(PeerRef::from(&to_peer), &message_ids, PeerRef::from(&from_peer))
+        .await
+        .map_err(|e| format!("Failed to forward messages: {}", e))?;
+
+    let new_ids: Vec<Option<i32>> = forwarded
+        .into_iter()
+        .map(|opt_msg| opt_msg.map(|msg| msg.id()))
+        .collect();
+
+    tracing::info!(
+        account_id = %account_id,
+        forwarded_count = new_ids.iter().filter(|id| id.is_some()).count(),
+        "Messages forwarded"
+    );
+
+    Ok(new_ids)
 }
 
 /// Save sent media to the local media directory so it can be displayed without re-downloading.

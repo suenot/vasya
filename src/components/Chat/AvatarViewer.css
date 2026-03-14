@@ -1,0 +1,144 @@
+/* Fullscreen avatar/profile photo viewer — Telegram style */
+.avatar-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: avatarViewerFadeIn 0.2s ease;
+}
+
+.avatar-viewer-overlay.avatar-viewer-closing {
+  animation: avatarViewerFadeOut 0.2s ease forwards;
+}
+
+/* Close button — top right */
+.avatar-viewer-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10001;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-primary, #fff);
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.avatar-viewer-close:hover {
+  background: var(--sidebar-hover, rgba(255, 255, 255, 0.15));
+}
+
+/* Counter — top center */
+.avatar-viewer-counter {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  color: var(--text-tertiary, rgba(255, 255, 255, 0.6));
+  z-index: 10001;
+  user-select: none;
+}
+
+/* Title — top left */
+.avatar-viewer-title {
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+  z-index: 10001;
+  user-select: none;
+  max-width: 30%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Image container */
+.avatar-viewer-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 60px 0;
+  overflow: hidden;
+}
+
+.avatar-viewer-img {
+  max-width: 92vw;
+  max-height: calc(100vh - 100px);
+  object-fit: contain;
+  user-select: none;
+  transition: transform 0.15s ease;
+  border-radius: 2px;
+}
+
+/* Navigation arrows */
+.avatar-viewer-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10001;
+  background: var(--sidebar-hover, rgba(255, 255, 255, 0.08));
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.8));
+  transition: background 0.15s, color 0.15s;
+}
+
+.avatar-viewer-nav:hover {
+  background: var(--sidebar-active, rgba(255, 255, 255, 0.18));
+  color: var(--text-primary, #fff);
+}
+
+.avatar-viewer-nav.left {
+  left: 16px;
+}
+
+.avatar-viewer-nav.right {
+  right: 16px;
+}
+
+/* Loading spinner */
+.avatar-viewer-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-color, rgba(255, 255, 255, 0.15));
+  border-top-color: var(--text-primary, #fff);
+  border-radius: 50%;
+  animation: avatarViewerSpin 0.8s linear infinite;
+}
+
+@keyframes avatarViewerSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes avatarViewerFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes avatarViewerFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}

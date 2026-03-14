@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { Chat } from '../../types/telegram';
 import { useTranslation, TranslationKey } from '../../i18n';
+import { AvatarViewer } from './AvatarViewer';
 
 interface ChatInfoPanelProps {
   chat: Chat;
+  accountId: string;
   onClose: () => void;
 }
 
@@ -13,11 +16,12 @@ const TYPE_LABEL_KEYS: Record<string, TranslationKey> = {
   channel: 'chat_type_channel',
 };
 
-export const ChatInfoPanel = ({ chat, onClose }: ChatInfoPanelProps) => {
+export const ChatInfoPanel = ({ chat, accountId, onClose }: ChatInfoPanelProps) => {
   const { t } = useTranslation();
   const avatarSrc = chat.avatarPath ? convertFileSrc(chat.avatarPath) : null;
   const initial = chat.title.charAt(0).toUpperCase();
   const typeLabel = TYPE_LABEL_KEYS[chat.chatType] ? t(TYPE_LABEL_KEYS[chat.chatType]) : chat.chatType;
+  const [showAvatarViewer, setShowAvatarViewer] = useState(false);
 
   return (
     <div className="chat-info-panel">
@@ -30,7 +34,12 @@ export const ChatInfoPanel = ({ chat, onClose }: ChatInfoPanelProps) => {
         </button>
       </div>
       <div className="chat-info-panel-body">
-        <div className="chat-info-avatar">
+        <div
+          className="chat-info-avatar"
+          style={{ cursor: avatarSrc ? 'pointer' : 'default' }}
+          onClick={() => { if (avatarSrc) setShowAvatarViewer(true); }}
+          title={avatarSrc ? t('photo_viewer') : undefined}
+        >
           {avatarSrc ? <img src={avatarSrc} alt={chat.title} /> : initial}
         </div>
         <div className="chat-info-details">
@@ -56,6 +65,16 @@ export const ChatInfoPanel = ({ chat, onClose }: ChatInfoPanelProps) => {
           </div>
         </div>
       </div>
+
+      {showAvatarViewer && (
+        <AvatarViewer
+          chatId={chat.id}
+          chatTitle={chat.title}
+          accountId={accountId}
+          initialPhotoSrc={avatarSrc || undefined}
+          onClose={() => setShowAvatarViewer(false)}
+        />
+      )}
     </div>
   );
 };

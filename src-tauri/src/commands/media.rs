@@ -189,6 +189,71 @@ pub async fn download_chat_photo(
     }
 }
 
+/// Download all profile photos for a user/chat
+#[tauri::command]
+pub async fn get_user_photos(
+    account_id: String,
+    chat_id: i64,
+    app: AppHandle,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<Vec<String>, String> {
+    tracing::info!(account_id = %account_id, chat_id = chat_id, "Get user photos");
+
+    let wrapper = {
+        let state_guard = state.read().await;
+        let client_manager = state_guard
+            .client_manager
+            .as_ref()
+            .ok_or("Client manager not initialized")?;
+        client_manager
+            .get_client(&account_id)
+            .await
+            .ok_or("Client not found for this account")?
+    };
+
+    let peer = resolve_peer(&wrapper, chat_id).await?;
+
+    let app_data_dir = app.path().app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+    let avatars_dir = app_data_dir.join("media").join("avatars");
+    tokio::fs::create_dir_all(&avatars_dir)
+        .await
+        .map_err(|e| format!("Failed to create avatars directory: {}", e))?;
+
+    let mut file_paths = Vec::new();
+    let mut index = 0u32;
+
+    let mut photos = wrapper.client.iter_profile_photos(&peer);
+
+    loop {
+        match photos.next().await {
+            Ok(Some(photo)) => {
+                let file_path = avatars_dir.join(format!("chat_{}_photo_{}.jpg", chat_id.abs(), index));
+
+                match wrapper.client.download_media(&photo, &file_path).await {
+                    Ok(()) => {
+                        if tokio::fs::metadata(&file_path).await.is_ok() {
+                            file_paths.push(file_path.to_string_lossy().to_string());
+                            index += 1;
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!(error = %e, index = index, "Failed to download profile photo");
+                    }
+                }
+            }
+            Ok(None) => break,
+            Err(e) => {
+                tracing::warn!(error = %e, "Error iterating profile photos");
+                break;
+            }
+        }
+    }
+
+    tracing::info!(chat_id = chat_id, count = file_paths.len(), "User photos downloaded");
+    Ok(file_paths)
+}
+
 /// Get file extension from media type
 fn media_extension(media: &grammers_client::types::Media) -> String {
     match media {

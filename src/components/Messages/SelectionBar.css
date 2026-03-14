@@ -1,0 +1,75 @@
+/* Selection action bar - fixed at bottom of messages area */
+.selection-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--surface-bg, rgba(30, 30, 30, 0.95));
+  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  animation: slide-up 0.2s ease-out;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.selection-bar-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.selection-bar-close:hover {
+  background: var(--hover-bg, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary);
+}
+
+.selection-bar-count {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.selection-bar-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.selection-bar-btn {
+  background: none;
+  border: none;
+  color: var(--accent-color, #3390ec);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.selection-bar-btn:hover {
+  background: var(--hover-bg, rgba(255, 255, 255, 0.08));
+}
+
+.selection-bar-btn-delete {
+  color: #e53935;
+}
+
+.selection-bar-btn-delete:hover {
+  background: rgba(229, 57, 53, 0.1);
+}

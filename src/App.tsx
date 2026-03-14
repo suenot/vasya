@@ -2,11 +2,14 @@ import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { LoginForm } from './components/Auth/LoginForm';
 import { MainLayout } from './components/Layout/MainLayout';
 import { ApiSettings } from './components/Settings/ApiSettings';
+import { CallOverlay } from './components/Call';
 import { useSettingsStore } from './store/settingsStore';
 import { useAccountsStore } from './store/accountsStore';
 import { useThemeStore } from './store/themeStore';
 import { useConnectionStore } from './store/connectionStore';
 import { useSttStore } from './store/sttStore';
+import { useCallStore } from './store/callStore';
+import { useGroupCallStore } from './store/groupCallStore';
 import { useSystemTheme } from './hooks/useSystemTheme';
 import { useTauriEvent } from './hooks/useTauriEvent';
 import { useTauriCommand } from './hooks/useTauriCommand';
@@ -52,6 +55,16 @@ function App() {
   useEffect(() => {
     loadSttSettings();
   }, [loadSttSettings]);
+
+  // Setup call event listeners
+  useEffect(() => {
+    const cleanup = useCallStore.getState().setupListeners();
+    const cleanupGroupCalls = useGroupCallStore.getState().setupListeners();
+    return () => {
+      cleanup();
+      cleanupGroupCalls();
+    };
+  }, []);
 
   // Track connection status from Rust backend
   useTauriEvent<ConnectionStatusEvent>('connection-status', useCallback((evt) => {
@@ -118,26 +131,35 @@ function App() {
   // Если API не настроен - показываем экран настройки
   if (!isConfigured) {
     return (
-      <div className="app">
-        <ApiSettings onSave={handleApiSave} />
-      </div>
+      <>
+        <div className="app">
+          <ApiSettings onSave={handleApiSave} />
+        </div>
+        <CallOverlay />
+      </>
     );
   }
 
   // Если есть активный аккаунт - показываем главный интерфейс
   if (activeAccount) {
     return (
-      <div className="app">
-        <ErrorBoundary><MainLayout /></ErrorBoundary>
-      </div>
+      <>
+        <div className="app">
+          <ErrorBoundary><MainLayout /></ErrorBoundary>
+        </div>
+        <CallOverlay />
+      </>
     );
   }
 
   // Иначе - показываем форму входа
   return (
-    <div className="app">
-      <ErrorBoundary><LoginForm onCancel={accounts.length > 0 ? handleLoginCancel : undefined} /></ErrorBoundary>
-    </div>
+    <>
+      <div className="app">
+        <ErrorBoundary><LoginForm onCancel={accounts.length > 0 ? handleLoginCancel : undefined} /></ErrorBoundary>
+      </div>
+      <CallOverlay />
+    </>
   );
 }
 

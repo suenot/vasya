@@ -1,0 +1,213 @@
+.forward-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: forward-overlay-in 0.15s ease-out;
+}
+
+@keyframes forward-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.forward-dialog {
+  background: var(--bg-secondary, #212121);
+  border-radius: 12px;
+  width: 90vw;
+  max-width: 420px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  animation: forward-dialog-in 0.15s ease-out;
+}
+
+@keyframes forward-dialog-in {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Header */
+.forward-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  flex-shrink: 0;
+}
+
+.forward-dialog-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+}
+
+.forward-dialog-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary, #aaa);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s;
+}
+
+.forward-dialog-close:hover {
+  color: var(--text-primary, #fff);
+  background: var(--sidebar-hover, rgba(255, 255, 255, 0.1));
+}
+
+/* Search */
+.forward-dialog-search-wrapper {
+  padding: 0 12px 8px;
+  flex-shrink: 0;
+}
+
+.forward-dialog-search {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--bg-primary, #181818);
+  color: var(--text-primary, #fff);
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.forward-dialog-search::placeholder {
+  color: var(--text-tertiary, #888);
+}
+
+.forward-dialog-search:focus {
+  background: var(--bg-tertiary, #1a1a1a);
+  box-shadow: 0 0 0 2px rgba(101, 170, 221, 0.3);
+}
+
+/* Status banner */
+.forward-dialog-status {
+  padding: 6px 16px;
+  font-size: 13px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.forward-dialog-status-success {
+  color: #7BC862;
+  background: rgba(123, 200, 98, 0.1);
+}
+
+.forward-dialog-status-error {
+  color: #E17076;
+  background: rgba(225, 112, 118, 0.1);
+}
+
+/* Chat list */
+.forward-dialog-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0 8px;
+}
+
+.forward-dialog-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.forward-dialog-list::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb, rgba(255, 255, 255, 0.15));
+  border-radius: 3px;
+}
+
+.forward-dialog-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Chat item */
+.forward-dialog-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.forward-dialog-item:hover {
+  background: var(--sidebar-hover, rgba(255, 255, 255, 0.08));
+}
+
+.forward-dialog-item:active {
+  background: var(--sidebar-active, rgba(255, 255, 255, 0.12));
+}
+
+.forward-dialog-item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Avatar */
+.forward-dialog-avatar-wrapper {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+}
+
+.forward-dialog-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.forward-dialog-avatar-initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+}
+
+/* Info */
+.forward-dialog-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.forward-dialog-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.forward-dialog-username {
+  font-size: 13px;
+  color: var(--text-secondary, #8b8b8b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Empty state */
+.forward-dialog-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--text-tertiary, #888);
+  font-size: 14px;
+}

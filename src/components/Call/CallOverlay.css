@@ -1,0 +1,557 @@
+/* Call Overlay - Root */
+.call-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.call-overlay-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
+}
+
+.call-overlay-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 40px 20px;
+  color: #fff;
+}
+
+/* Avatar */
+.call-avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  font-weight: 600;
+  color: #fff;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+/* Peer name */
+.call-peer-name {
+  font-size: 28px;
+  font-weight: 600;
+  margin-top: 24px;
+  text-align: center;
+  color: #fff;
+}
+
+/* Call status text */
+.call-status {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 8px;
+  text-align: center;
+}
+
+/* Call duration timer */
+.call-timer {
+  font-size: 18px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pulsing ring animation */
+.call-pulse-ring {
+  position: relative;
+}
+
+.call-pulse-ring::before,
+.call-pulse-ring::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  animation: call-pulse 2s ease-out infinite;
+}
+
+.call-pulse-ring::after {
+  animation-delay: 0.6s;
+}
+
+@keyframes call-pulse {
+  0% {
+    width: 120px;
+    height: 120px;
+    opacity: 0.6;
+  }
+  100% {
+    width: 200px;
+    height: 200px;
+    opacity: 0;
+  }
+}
+
+/* Incoming call pulse (green tint) */
+.call-pulse-ring--incoming::before,
+.call-pulse-ring--incoming::after {
+  border-color: rgba(76, 217, 100, 0.4);
+}
+
+/* Action buttons container */
+.call-actions {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  margin-top: auto;
+  padding-bottom: 40px;
+}
+
+/* Circular action button */
+.call-action-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+  color: #fff;
+  font-size: 0;
+  outline: none;
+}
+
+.call-action-btn:hover {
+  transform: scale(1.08);
+}
+
+.call-action-btn:active {
+  transform: scale(0.95);
+}
+
+/* Accept button (green) */
+.call-action-btn--accept {
+  background: #4cd964;
+}
+
+.call-action-btn--accept:hover {
+  background: #3ec455;
+}
+
+/* Decline / Hangup button (red) */
+.call-action-btn--decline,
+.call-action-btn--hangup {
+  background: #ff3b30;
+}
+
+.call-action-btn--decline:hover,
+.call-action-btn--hangup:hover {
+  background: #e0342b;
+}
+
+/* Toggle buttons (mute, speaker) */
+.call-action-btn--toggle {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.call-action-btn--toggle:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.call-action-btn--toggle.active {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1a1a1a;
+}
+
+/* Button labels */
+.call-action-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 8px;
+  text-align: center;
+}
+
+.call-action-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Incoming call dialog specific */
+.call-incoming-text {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 12px;
+  text-align: center;
+}
+
+/* Animation for the overlay appearance */
+.call-overlay {
+  animation: call-overlay-in 0.3s ease-out;
+}
+
+@keyframes call-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ========== Video Call Screen ========== */
+.video-call-screen {
+  background: #000;
+}
+
+.video-call-remote {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.video-call-remote-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-call-remote-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.video-call-large-avatar {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 64px;
+  font-weight: 600;
+  color: #fff;
+  user-select: none;
+}
+
+/* PiP local video */
+.video-call-pip {
+  position: absolute;
+  bottom: 120px;
+  right: 20px;
+  width: 160px;
+  height: 213px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #1a1a2e;
+  z-index: 10;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  cursor: grab;
+}
+
+.video-call-local-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-call-pip-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Video call top bar */
+.video-call-top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 20px 16px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, transparent 100%);
+}
+
+.video-call-peer-name {
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.video-call-duration {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Video call bottom bar */
+.video-call-bottom-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 28px;
+  padding: 20px 20px 40px;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.6) 0%, transparent 100%);
+}
+
+/* Video call minimized bar */
+.video-call-minimized {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  z-index: 10000;
+  background: #1a1a2e;
+  border-radius: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease;
+  animation: call-overlay-in 0.3s ease-out;
+}
+
+.video-call-minimized:hover {
+  transform: scale(1.03);
+}
+
+.video-call-minimized-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.video-call-minimized-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.video-call-minimized-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.video-call-minimized-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.video-call-minimized-duration {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ========== Group Call Screen ========== */
+.group-call-screen {
+  background: #000;
+}
+
+.group-call-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  color: #fff;
+}
+
+/* Group call header */
+.group-call-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 20px 16px;
+  flex-shrink: 0;
+}
+
+.group-call-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.group-call-count {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 4px;
+}
+
+/* Participant grid */
+.group-call-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+  align-content: start;
+}
+
+.group-call-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 16px;
+  padding: 40px;
+}
+
+/* Participant card */
+.group-call-participant {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  transition: background 0.2s ease;
+}
+
+.group-call-participant--speaking {
+  background: rgba(76, 217, 100, 0.1);
+}
+
+.group-call-participant-avatar-wrap {
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+
+.group-call-participant-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 600;
+  color: #fff;
+  user-select: none;
+}
+
+/* Speaking indicator ring */
+.group-call-speaking-ring {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border-radius: 50%;
+  border: 3px solid #4cd964;
+  animation: group-call-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes group-call-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.06);
+  }
+}
+
+.group-call-participant-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-call-participant-self {
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 400;
+}
+
+.group-call-participant-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 16px;
+}
+
+.group-call-muted-icon {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.group-call-speaking-text {
+  font-size: 11px;
+  color: #4cd964;
+  font-weight: 500;
+}
+
+.group-call-raise-hand {
+  display: flex;
+  align-items: center;
+}
+
+/* Group call bottom bar */
+.group-call-bottom-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 32px;
+  padding: 20px 20px 40px;
+  flex-shrink: 0;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.4) 0%, transparent 100%);
+}
