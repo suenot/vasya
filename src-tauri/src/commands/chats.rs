@@ -24,6 +24,7 @@ pub struct Chat {
     pub chat_type: String, // "user", "group", "channel"
     pub last_message: Option<String>,
     pub avatar_path: Option<String>,
+    pub is_forum: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -61,6 +62,7 @@ pub async fn get_cached_chats(
             chat_type: r.chat_type,
             last_message: r.last_message,
             avatar_path: r.avatar_path,
+            is_forum: r.is_forum,
         })
         .collect();
 
@@ -114,17 +116,24 @@ pub async fn start_loading_chats(
     while let Some(dialog) = dialogs.next().await.map_err(|e| format!("Failed to get dialogs: {}", e))? {
         let peer = &dialog.peer;
 
-        let chat_type = match peer {
-            Peer::User(_) => "user",
-            Peer::Group(_) => "group",
-            Peer::Channel(_) => "channel",
+        let (chat_type, is_forum) = match peer {
+            Peer::User(_) => ("user", false),
+            Peer::Group(g) => {
+                // Megagroups (supergroups) with forum flag enabled
+                let forum = match &g.raw {
+                    grammers_tl_types::enums::Chat::Channel(ch) => ch.forum,
+                    _ => false,
+                };
+                ("group", forum)
+            },
+            Peer::Channel(c) => ("channel", c.raw.forum),
         };
 
         let title = peer.name().unwrap_or("Unknown").to_string();
         let username = match peer {
             Peer::User(u) => u.username().map(|s| s.to_string()),
             Peer::Channel(c) => c.username().map(|s| s.to_string()),
-            _ => None,
+            Peer::Group(g) => g.username().map(|s| s.to_string()),
         };
 
         let chat_id = PeerRef::from(peer).id.bot_api_dialog_id();
@@ -164,6 +173,7 @@ pub async fn start_loading_chats(
             chat_type: chat_type.to_string(),
             last_message: last_message_text.clone(),
             avatar_path: cached_avatar.clone(),
+            is_forum,
         };
 
         // EMIT IMMEDIATELY — no waiting for avatar download or DB save
@@ -186,6 +196,7 @@ pub async fn start_loading_chats(
             let last_message_text = last_message_text.clone();
             let cached_avatar = cached_avatar.clone();
             let semaphore = Arc::clone(&avatar_semaphore);
+            let is_forum = is_forum;
 
             tokio::spawn(async move {
                 // Download avatar if not cached (rate-limited by semaphore)
@@ -213,6 +224,7 @@ pub async fn start_loading_chats(
                         avatar_path: avatar_path.clone(),
                         last_message: last_message_text.clone(),
                         unread_count: 0,
+                        is_forum,
                     };
                     if let Err(e) = storage.save_chat(&record).await {
                         tracing::warn!(chat_id = chat_id, error = %e, "Failed to save chat to storage");
@@ -259,17 +271,23 @@ pub async fn get_chats(
 
     while let Some(dialog) = dialogs.next().await.map_err(|e| format!("Failed to get dialogs: {}", e))? {
         let peer = &dialog.peer;
-        let chat_type = match peer {
-            Peer::User(_) => "user",
-            Peer::Group(_) => "group",
-            Peer::Channel(_) => "channel",
+        let (chat_type, is_forum) = match peer {
+            Peer::User(_) => ("user", false),
+            Peer::Group(g) => {
+                let forum = match &g.raw {
+                    grammers_tl_types::enums::Chat::Channel(ch) => ch.forum,
+                    _ => false,
+                };
+                ("group", forum)
+            },
+            Peer::Channel(c) => ("channel", c.raw.forum),
         };
 
         let title = peer.name().unwrap_or("Unknown").to_string();
         let username = match peer {
             Peer::User(u) => u.username().map(|s| s.to_string()),
             Peer::Channel(c) => c.username().map(|s| s.to_string()),
-            _ => None,
+            Peer::Group(g) => g.username().map(|s| s.to_string()),
         };
 
         let chat_id = PeerRef::from(peer).id.bot_api_dialog_id();
@@ -283,6 +301,7 @@ pub async fn get_chats(
             chat_type: chat_type.to_string(),
             last_message: None,
             avatar_path,
+            is_forum,
         });
     }
 

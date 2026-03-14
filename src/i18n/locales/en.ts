@@ -259,6 +259,15 @@ export const en = {
   loading_type: 'Loading {type}...',
   failed_to_load: '{type} (failed to load)',
 
+  // Forum Topics
+  topics: 'Topics',
+  topics_loading: 'Loading topics...',
+  topics_empty: 'No topics in this forum',
+  topics_back: 'Back to topics',
+  topic_closed: 'Closed',
+  topic_pinned: 'Pinned',
+  forum_group: 'Forum',
+
   // API Settings
   api_fill_fields: 'Fill in all fields',
   api_id_number: 'API ID must be a number',

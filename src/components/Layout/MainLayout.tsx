@@ -4,7 +4,7 @@ import { AccountSettings } from '../Settings/AccountSettings';
 import { AccountSwitcher } from '../Accounts/AccountSwitcher';
 import { MessageList, MessageListHandle } from '../Messages/MessageList';
 import { prioritizeChat } from '../../hooks/useMediaQueue';
-import { ChatList, ChatHeader, ChatContextMenu, ChatInfoPanel, ChatFilters } from '../Chat';
+import { ChatList, ChatHeader, ChatContextMenu, ChatInfoPanel, ChatFilters, TopicList } from '../Chat';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useAccountsStore } from '../../store/accountsStore';
 import { useChatsStore } from '../../store/chatsStore';
@@ -13,7 +13,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useTauriEvent } from '../../hooks/useTauriEvent';
 import { useHotkeysStore } from '../../store/hotkeysStore';
 import { useFolderStore } from '../../store/folderStore';
-import { Chat } from '../../types/telegram';
+import { Chat, ForumTopic } from '../../types/telegram';
 import { useTranslation } from '../../i18n';
 import './MainLayout.css';
 
@@ -49,6 +49,7 @@ export const MainLayout = () => {
   const [highlightedMessageId, setHighlightedMessageId] = useState<number | null>(null);
   const [showChatInfo, setShowChatInfo] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState<ForumTopic | null>(null);
   const messageListRef = useRef<MessageListHandle>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -211,6 +212,7 @@ export const MainLayout = () => {
 
   const handleChatClick = useCallback((chatId: number) => {
     setSelectedChatId(chatId);
+    setSelectedTopic(null); // Reset topic when switching chats
     prioritizeChat(chatId);
   }, []);
 
@@ -236,6 +238,14 @@ export const MainLayout = () => {
     () => chats.find((c) => c.id === selectedChatId) ?? null,
     [chats, selectedChatId]
   );
+
+  const handleTopicClick = useCallback((topic: ForumTopic) => {
+    setSelectedTopic(topic);
+  }, []);
+
+  const handleBackToTopics = useCallback(() => {
+    setSelectedTopic(null);
+  }, []);
 
   const handleScrollToMessage = useCallback((messageId: number) => {
     setHighlightedMessageId(messageId);
@@ -308,6 +318,11 @@ export const MainLayout = () => {
           setShowChatInfo(false);
           return;
         }
+        if (selectedTopic) {
+          e.preventDefault();
+          setSelectedTopic(null);
+          return;
+        }
         if (selectedChatId) {
           e.preventDefault();
           setSelectedChatId(null);
@@ -332,7 +347,7 @@ export const MainLayout = () => {
 
     window.addEventListener('keydown', handleGlobalKeydown);
     return () => window.removeEventListener('keydown', handleGlobalKeydown);
-  }, [hotkeys, filteredChats, selectedChatId, showSettings, showChatInfo, handleChatClick]);
+  }, [hotkeys, filteredChats, selectedChatId, selectedTopic, showSettings, showChatInfo, handleChatClick]);
 
   return (
     <div className={`main-layout ${selectedChatId ? 'chat-open' : ''} layout-${folderLayout}`}>
@@ -422,14 +437,24 @@ export const MainLayout = () => {
 
         <div className="messages-area">
           {selectedChat && activeAccount ? (
-            <MessageList
-              key={selectedChat.id}
-              ref={messageListRef}
-              accountId={activeAccount.id}
-              chatId={selectedChat.id}
-              chatTitle={selectedChat.title}
-              highlightedMessageId={highlightedMessageId}
-            />
+            selectedChat.isForum && !selectedTopic ? (
+              <TopicList
+                accountId={activeAccount.id}
+                chatId={selectedChat.id}
+                onTopicClick={handleTopicClick}
+              />
+            ) : (
+              <MessageList
+                key={selectedTopic ? `${selectedChat.id}-${selectedTopic.id}` : selectedChat.id}
+                ref={messageListRef}
+                accountId={activeAccount.id}
+                chatId={selectedChat.id}
+                chatTitle={selectedTopic ? selectedTopic.title : selectedChat.title}
+                highlightedMessageId={highlightedMessageId}
+                topicId={selectedTopic?.id}
+                onBackToTopics={selectedChat.isForum ? handleBackToTopics : undefined}
+              />
+            )
           ) : (
             <div className="empty-chat">
               <div className="empty-chat-bubble">

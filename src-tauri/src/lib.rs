@@ -74,6 +74,7 @@ pub fn run() {
             commands::save_tabs,
             commands::get_storage_mode,
             commands::set_storage_mode,
+            commands::get_forum_topics,
         ])
         .setup(|app| {
             let app_dir = app

@@ -16,6 +16,18 @@ export interface Chat {
   chatType: 'user' | 'group' | 'channel';
   lastMessage?: string;
   avatarPath?: string;
+  isForum?: boolean;
+}
+
+export interface ForumTopic {
+  id: number;
+  title: string;
+  iconColor: number;
+  iconEmojiId?: number;
+  unreadCount: number;
+  topMessage: number;
+  isPinned: boolean;
+  isClosed: boolean;
 }
 
 export interface MediaInfo {

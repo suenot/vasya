@@ -5,6 +5,25 @@
   width: 100%;
 }
 
+.back-to-topics {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--surface-bg, rgba(0, 0, 0, 0.03));
+  border: none;
+  border-bottom: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+  color: var(--accent-color, #3390ec);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.back-to-topics:hover {
+  background: var(--hover-bg, rgba(0, 0, 0, 0.06));
+}
+
 .messages-container {
   flex: 1;
   overflow-y: auto;

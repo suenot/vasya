@@ -42,6 +42,9 @@ impl LocalStorage {
         let _ = conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_tabs_id_account ON chat_tabs(id, account_id)");
         let _ = conn.execute("ALTER TABLE chat_folders ADD COLUMN icon TEXT");
 
+        // V3: Add is_forum flag to chats for Telegram forum/topics support
+        let _ = conn.execute("ALTER TABLE chats ADD COLUMN is_forum INTEGER NOT NULL DEFAULT 0");
+
         Ok(())
     }
 
@@ -65,8 +68,8 @@ impl DataStorage for LocalStorage {
             let query = "
                 INSERT INTO chats (
                     id, account_id, type, title, username, avatar_path,
-                    last_message, unread_count, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    last_message, unread_count, is_forum, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id, account_id) DO UPDATE SET
                     type = excluded.type,
                     title = excluded.title,
@@ -74,6 +77,7 @@ impl DataStorage for LocalStorage {
                     avatar_path = excluded.avatar_path,
                     last_message = excluded.last_message,
                     unread_count = excluded.unread_count,
+                    is_forum = excluded.is_forum,
                     updated_at = excluded.updated_at
             ";
 
@@ -97,8 +101,9 @@ impl DataStorage for LocalStorage {
             };
 
             stmt.bind((8, chat.unread_count as i64)).context("bind unread_count")?;
-            stmt.bind((9, now)).context("bind created_at")?;
-            stmt.bind((10, now)).context("bind updated_at")?;
+            stmt.bind((9, if chat.is_forum { 1i64 } else { 0i64 })).context("bind is_forum")?;
+            stmt.bind((10, now)).context("bind created_at")?;
+            stmt.bind((11, now)).context("bind updated_at")?;
             stmt.next().context("execute chat insert")?;
 
             Ok(())
@@ -114,7 +119,7 @@ impl DataStorage for LocalStorage {
             let conn = conn.lock().unwrap();
             let query = "
                 SELECT id, account_id, type, title, username, avatar_path,
-                       last_message, unread_count, updated_at
+                       last_message, unread_count, is_forum, updated_at
                 FROM chats
                 WHERE account_id = ?
                 ORDER BY updated_at DESC
@@ -134,6 +139,7 @@ impl DataStorage for LocalStorage {
                     avatar_path: stmt.read::<Option<String>, _>("avatar_path").unwrap(),
                     last_message: stmt.read::<Option<String>, _>("last_message").unwrap(),
                     unread_count: stmt.read::<i64, _>("unread_count").unwrap() as i32,
+                    is_forum: stmt.read::<i64, _>("is_forum").unwrap_or(0) != 0,
                 });
             }
 
@@ -313,6 +319,7 @@ mod tests {
             avatar_path: None,
             last_message: Some("hello".to_string()),
             unread_count: 1,
+            is_forum: false,
         }
     }
 

@@ -12,6 +12,8 @@ interface MessageListProps {
   chatId: number;
   chatTitle: string;
   highlightedMessageId?: number | null;
+  topicId?: number;
+  onBackToTopics?: () => void;
 }
 
 export interface MessageListHandle {
@@ -103,7 +105,7 @@ const MessageItem = memo(({ message, accountId, chatId, isHighlighted }: {
 // when messagesByChat[chatId] is undefined (Object.is([], []) === false)
 const EMPTY_MESSAGES: any[] = [];
 
-export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ accountId, chatId, chatTitle, highlightedMessageId }, ref) => {
+export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ accountId, chatId, chatTitle, highlightedMessageId, topicId, onBackToTopics }, ref) => {
   const messages = useMessagesStore((s) => s.messagesByChat[chatId] ?? EMPTY_MESSAGES);
   const containerRef = useRef<HTMLDivElement>(null);
   const pendingScrollRef = useRef<number | null>(null);
@@ -123,6 +125,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ ac
         chatId,
         offsetId: messageId + 1,
         limit: 50,
+        topicId,
       }).then((fetched) => {
         if (fetched.length > 0) {
           useMessagesStore.getState().setMessages(chatId, fetched.reverse());
@@ -174,6 +177,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ ac
           accountId,
           chatId,
           limit: 50,
+          topicId,
         });
         setMessages(chatId, fetched.reverse());
         setHasMore(chatId, fetched.length === 50);
@@ -252,6 +256,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ ac
         chatId,
         offsetId: oldest.id,
         limit: 50,
+        topicId,
       });
       if (older.length === 0) {
         setHasMore(chatId, false);
@@ -274,6 +279,14 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ ac
 
   return (
     <div className="messages-wrapper">
+      {onBackToTopics && (
+        <button className="back-to-topics" onClick={onBackToTopics}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          {chatTitle}
+        </button>
+      )}
       <div className="messages-container" ref={containerRef} onScroll={handleScroll}>
         {loadingRef.current && messages.length === 0 ? (
           <div className="messages-loading"><p>Loading messages...</p></div>
@@ -297,6 +310,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ ac
       <MessageInput
         accountId={accountId}
         chatId={chatId}
+        topicId={topicId}
         onMessageSent={handleMessageSent}
       />
     </div>

@@ -55,19 +55,21 @@ fn extract_media_info(msg: &GrammersMessage) -> Option<Vec<MediaInfo>> {
     })
 }
 
-/// Get messages from a chat
+/// Get messages from a chat (or from a specific forum topic when topic_id is provided)
 #[tauri::command]
 pub async fn get_messages(
     account_id: String,
     chat_id: i64,
     offset_id: Option<i32>,
     limit: Option<usize>,
+    topic_id: Option<i32>,
     state: State<'_, Arc<RwLock<AppState>>>,
 ) -> Result<Vec<Message>, String> {
     tracing::info!(
         account_id = %account_id,
         chat_id = chat_id,
         offset_id = ?offset_id,
+        topic_id = ?topic_id,
         "Getting messages"
     );
 
@@ -84,8 +86,66 @@ pub async fn get_messages(
     }; // state_guard dropped here
 
     let chat = resolve_peer(&wrapper, chat_id).await?;
-
     let limit = limit.unwrap_or(50);
+
+    // For forum topics, use messages.getReplies with msg_id = topic_id
+    if let Some(tid) = topic_id {
+        let input_peer: grammers_tl_types::enums::InputPeer = PeerRef::from(&chat).into();
+        let request = grammers_tl_types::functions::messages::GetReplies {
+            peer: input_peer,
+            msg_id: tid,
+            offset_id: offset_id.unwrap_or(0),
+            offset_date: 0,
+            add_offset: 0,
+            limit: limit as i32,
+            max_id: 0,
+            min_id: 0,
+            hash: 0,
+        };
+
+        let result = wrapper
+            .client
+            .invoke(&request)
+            .await
+            .map_err(|e| format!("Failed to get topic messages: {}", e))?;
+
+        let raw_messages = match result {
+            grammers_tl_types::enums::messages::Messages::Messages(m) => m.messages,
+            grammers_tl_types::enums::messages::Messages::Slice(m) => m.messages,
+            grammers_tl_types::enums::messages::Messages::ChannelMessages(m) => m.messages,
+            grammers_tl_types::enums::messages::Messages::NotModified(_) => Vec::new(),
+        };
+
+        let messages: Vec<Message> = raw_messages
+            .into_iter()
+            .filter_map(|m| {
+                match m {
+                    grammers_tl_types::enums::Message::Message(msg) => {
+                        let from_user_id = msg.from_id.as_ref().map(|p| match p {
+                            grammers_tl_types::enums::Peer::User(u) => u.user_id,
+                            grammers_tl_types::enums::Peer::Chat(c) => c.chat_id,
+                            grammers_tl_types::enums::Peer::Channel(c) => c.channel_id,
+                        });
+                        Some(Message {
+                            id: msg.id,
+                            chat_id,
+                            from_user_id,
+                            text: if msg.message.is_empty() { None } else { Some(msg.message) },
+                            date: msg.date as i64,
+                            is_outgoing: msg.out,
+                            media: None, // Raw TL media parsing would be complex; keep simple for now
+                        })
+                    }
+                    _ => None,
+                }
+            })
+            .collect();
+
+        tracing::info!(count = messages.len(), chat_id = chat_id, topic_id = tid, "Topic messages loaded");
+        return Ok(messages);
+    }
+
+    // Regular messages (no topic)
     let mut messages_iter = wrapper.client.iter_messages(&chat);
 
     if let Some(offset) = offset_id {
@@ -193,15 +253,16 @@ pub async fn search_messages(
     Ok(messages)
 }
 
-/// Send a message to a chat
+/// Send a message to a chat (or to a specific forum topic when topic_id is provided)
 #[tauri::command]
 pub async fn send_message(
     account_id: String,
     chat_id: i64,
     text: String,
+    topic_id: Option<i32>,
     state: State<'_, Arc<RwLock<AppState>>>,
 ) -> Result<Message, String> {
-    tracing::info!(account_id = %account_id, chat_id = chat_id, "Sending message");
+    tracing::info!(account_id = %account_id, chat_id = chat_id, topic_id = ?topic_id, "Sending message");
 
     if text.trim().is_empty() {
         return Err("Message text cannot be empty".to_string());
@@ -221,9 +282,16 @@ pub async fn send_message(
 
     let chat = resolve_peer(&wrapper, chat_id).await?;
 
+    // For forum topics, use InputMessage with reply_to set to topic_id
+    let input_msg = if let Some(tid) = topic_id {
+        grammers_client::InputMessage::new().text(&text).reply_to(Some(tid))
+    } else {
+        grammers_client::InputMessage::new().text(&text)
+    };
+
     let sent_message = wrapper
         .client
-        .send_message(&chat, text.clone())
+        .send_message(&chat, input_msg)
         .await
         .map_err(|e| format!("Failed to send message: {}", e))?;
 

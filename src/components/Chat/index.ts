@@ -5,3 +5,4 @@ export { ChatContextMenu } from './ChatContextMenu';
 export { ChatHeader } from './ChatHeader';
 export { ChatInfoPanel } from './ChatInfoPanel';
 export { ChatList } from './ChatList';
+export { TopicList } from './TopicList';

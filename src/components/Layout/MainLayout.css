@@ -435,6 +435,13 @@
   text-overflow: ellipsis;
 }
 
+.chat-forum-badge {
+  display: flex;
+  align-items: center;
+  color: var(--accent-color, #3390ec);
+  flex-shrink: 0;
+}
+
 .pinned-icon {
   font-size: 12px;
   transform: rotate(45deg);

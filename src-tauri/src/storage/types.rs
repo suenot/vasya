@@ -13,6 +13,7 @@ pub struct ChatRecord {
     pub avatar_path: Option<String>,
     pub last_message: Option<String>,
     pub unread_count: i32,
+    pub is_forum: bool,
 }
 
 /// Folder record
@@ -132,6 +133,7 @@ mod tests {
             avatar_path: None,
             last_message: Some("Hello!".to_string()),
             unread_count: 5,
+            is_forum: false,
         };
         let json = serde_json::to_string(&chat).unwrap();
         let deserialized: ChatRecord = serde_json::from_str(&json).unwrap();
@@ -156,6 +158,7 @@ mod tests {
             avatar_path: None,
             last_message: None,
             unread_count: 0,
+            is_forum: false,
         };
         let json = serde_json::to_string(&chat).unwrap();
         let deserialized: ChatRecord = serde_json::from_str(&json).unwrap();

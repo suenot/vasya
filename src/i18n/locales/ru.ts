@@ -261,6 +261,15 @@ export const ru: Record<TranslationKey, string> = {
   loading_type: 'Загрузка {type}...',
   failed_to_load: '{type} (не удалось загрузить)',
 
+  // Forum Topics
+  topics: 'Темы',
+  topics_loading: 'Загрузка тем...',
+  topics_empty: 'Нет тем в этом форуме',
+  topics_back: 'Назад к темам',
+  topic_closed: 'Закрыта',
+  topic_pinned: 'Закреплена',
+  forum_group: 'Форум',
+
   // API Settings
   api_fill_fields: 'Заполните все поля',
   api_id_number: 'API ID должен быть числом',

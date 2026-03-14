@@ -12,6 +12,7 @@ pub mod peer_resolve;
 pub mod flood_wait;
 pub mod stt;
 pub mod folders;
+pub mod topics;
 
 pub use auth::*;
 pub use settings::*;
@@ -20,3 +21,4 @@ pub use messages::*;
 pub use media::*;
 pub use stt::*;
 pub use folders::*;
+pub use topics::*;

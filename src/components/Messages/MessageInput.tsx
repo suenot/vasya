@@ -9,10 +9,11 @@ import './MessageInput.css';
 interface MessageInputProps {
   accountId: string;
   chatId: number;
+  topicId?: number;
   onMessageSent?: (message: Message) => void;
 }
 
-export const MessageInput = ({ accountId, chatId, onMessageSent }: MessageInputProps) => {
+export const MessageInput = ({ accountId, chatId, topicId, onMessageSent }: MessageInputProps) => {
   const { t } = useTranslation();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -150,6 +151,7 @@ export const MessageInput = ({ accountId, chatId, onMessageSent }: MessageInputP
           accountId,
           chatId,
           text: trimmedText,
+          topicId,
         });
       }
 
