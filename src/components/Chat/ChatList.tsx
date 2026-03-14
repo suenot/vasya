@@ -12,6 +12,7 @@ interface ChatListProps {
   selectedChatId: number | null;
   favorites: Set<number>;
   searchQuery: string;
+  highlightedIndex: number;
   onChatClick: (chatId: number) => void;
   onContextMenu: (e: React.MouseEvent, chatId: number) => void;
 }
@@ -23,6 +24,7 @@ export const ChatList = memo(({
   selectedChatId,
   favorites,
   searchQuery,
+  highlightedIndex,
   onChatClick,
   onContextMenu,
 }: ChatListProps) => {
@@ -39,12 +41,13 @@ export const ChatList = memo(({
             <p style={{ color: 'var(--error-color)' }}>{error}</p>
           </div>
         ) : chats.length > 0 ? (
-          chats.map((chat) => (
+          chats.map((chat, index) => (
             <ChatListItem
               key={chat.id}
               chat={chat}
               isSelected={selectedChatId === chat.id}
               isFavorite={favorites.has(chat.id)}
+              isHighlighted={highlightedIndex === index}
               onChatClick={onChatClick}
               onContextMenu={onContextMenu}
             />

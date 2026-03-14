@@ -548,32 +548,90 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
     </div>
   );
 
-  const renderHotkeysSettings = () => (
-    <div className="settings-content">
-      <div className="settings-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>{t('hotkeys')}</h2>
-        <button className="text-button" onClick={resetDefaults}>{t('reset_defaults')}</button>
-      </div>
-      <div className="settings-group">
-        <h3>{t('app_shortcuts')}</h3>
-        {hotkeys.map((hotkey) => (
-          <div key={hotkey.id} className={`settings-item clickable ${listeningForKey === hotkey.id ? 'active-listening' : ''}`} onClick={() => setListeningForKey(listeningForKey === hotkey.id ? null : hotkey.id)}>
-            <div className="settings-item-label">
-              <div className="settings-item-title">{hotkey.label}</div>
-              <div className="settings-item-description">{hotkey.description}</div>
+  const renderHotkeysSettings = () => {
+    const categories = ['search', 'navigation', 'chat', 'folders', 'messages'] as const;
+    const categoryKeys: Record<string, string> = {
+      search: 'hotkey_category_search',
+      navigation: 'hotkey_category_navigation',
+      chat: 'hotkey_category_chat',
+      folders: 'hotkey_category_folders',
+      messages: 'hotkey_category_messages',
+    };
+
+    const formatKey = (k: string) => {
+      const map: Record<string, string> = {
+        Meta: navigator.platform.includes('Mac') ? '⌘' : 'Win',
+        Ctrl: navigator.platform.includes('Mac') ? '⌃' : 'Ctrl',
+        Alt: navigator.platform.includes('Mac') ? '⌥' : 'Alt',
+        Shift: '⇧',
+        ArrowUp: '↑',
+        ArrowDown: '↓',
+        ArrowLeft: '←',
+        ArrowRight: '→',
+        Escape: 'Esc',
+        Tab: 'Tab',
+        Enter: 'Enter',
+        PageUp: 'PgUp',
+        PageDown: 'PgDn',
+        Home: 'Home',
+        End: 'End',
+      };
+      return map[k] || k.toUpperCase();
+    };
+
+    return (
+      <div className="settings-content">
+        <div className="settings-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2>{t('hotkeys')}</h2>
+          <button className="text-button" onClick={resetDefaults}>{t('reset_defaults')}</button>
+        </div>
+        {categories.map((cat) => {
+          const catHotkeys = hotkeys.filter((h) => h.category === cat);
+          if (catHotkeys.length === 0) return null;
+          return (
+            <div className="settings-group" key={cat}>
+              <h3>{t(categoryKeys[cat] as any)}</h3>
+              {catHotkeys.map((hotkey) => (
+                <div
+                  key={hotkey.id}
+                  className={`settings-item ${hotkey.readonly ? '' : 'clickable'} ${listeningForKey === hotkey.id ? 'active-listening' : ''}`}
+                  onClick={() => {
+                    if (!hotkey.readonly) {
+                      setListeningForKey(listeningForKey === hotkey.id ? null : hotkey.id);
+                    }
+                  }}
+                >
+                  <div className="settings-item-label">
+                    <div className="settings-item-title">{t(hotkey.label as any)}</div>
+                    <div className="settings-item-description">{t(hotkey.description as any)}</div>
+                  </div>
+                  <div className="settings-item-value hotkey-badge">
+                    {listeningForKey === hotkey.id ? (
+                      <span className="listening-text">{t('press_keys')}</span>
+                    ) : (
+                      <>
+                        {hotkey.keys.map((k, i) => (
+                          <span key={i}>
+                            {i > 0 && ' + '}
+                            <kbd>{formatKey(k)}</kbd>
+                          </span>
+                        ))}
+                        {hotkey.readonly && (
+                          <span className="hotkey-readonly-badge" style={{ marginLeft: 8, fontSize: 11, opacity: 0.5 }}>
+                            {t('hotkey_readonly' as any)}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="settings-item-value hotkey-badge">
-              {listeningForKey === hotkey.id ? (
-                <span className="listening-text">{t('press_keys')}</span>
-              ) : (
-                hotkey.keys.map(k => k === 'Meta' ? '⌘' : k).join(' + ')
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderLanguageSettings = () => (
     <div className="settings-content">

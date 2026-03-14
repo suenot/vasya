@@ -7,6 +7,7 @@ interface ChatListItemProps {
   chat: Chat;
   isSelected: boolean;
   isFavorite: boolean;
+  isHighlighted?: boolean;
   onChatClick: (chatId: number) => void;
   onContextMenu: (e: React.MouseEvent, chatId: number) => void;
 }
@@ -15,6 +16,7 @@ export const ChatListItem = memo(({
   chat,
   isSelected,
   isFavorite,
+  isHighlighted,
   onChatClick,
   onContextMenu,
 }: ChatListItemProps) => {
@@ -31,6 +33,7 @@ export const ChatListItem = memo(({
     'chat-item',
     isSelected ? 'selected' : '',
     isFavorite ? 'favorite' : '',
+    isHighlighted ? 'keyboard-highlighted' : '',
   ]
     .filter(Boolean)
     .join(' ');

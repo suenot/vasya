@@ -1,9 +1,12 @@
-import { useState, useCallback, KeyboardEvent, ClipboardEvent, DragEvent } from 'react';
+import { useState, useCallback, useRef, KeyboardEvent, ClipboardEvent, DragEvent } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { readImage } from '@tauri-apps/plugin-clipboard-manager';
 import { useMessagesStore } from '../../store/messagesStore';
 import { Message } from '../../types/telegram';
 import { useTranslation } from '../../i18n';
+import { VoiceRecorder } from './VoiceRecorder';
+import { AttachmentMenu } from './AttachmentMenu';
+import { CameraCapture } from './CameraCapture';
 import './MessageInput.css';
 
 interface MessageInputProps {
@@ -13,12 +16,24 @@ interface MessageInputProps {
   onMessageSent?: (message: Message) => void;
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export const MessageInput = ({ accountId, chatId, topicId, onMessageSent }: MessageInputProps) => {
   const { t } = useTranslation();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const addOptimisticMessage = useMessagesStore((s) => s.addOptimisticMessage);
   const confirmOptimisticMessage = useMessagesStore((s) => s.confirmOptimisticMessage);
@@ -118,13 +133,26 @@ export const MessageInput = ({ accountId, chatId, topicId, onMessageSent }: Mess
     setDragOver(false);
   }, []);
 
+  const sendMediaBytes = useCallback(async (file: File, captionText: string) => {
+    const buffer = await file.arrayBuffer();
+    const bytes = Array.from(new Uint8Array(buffer));
+
+    return invoke<Message>('send_media', {
+      accountId,
+      chatId,
+      mediaBytes: bytes,
+      fileName: file.name,
+      mimeType: file.type || 'application/octet-stream',
+      caption: captionText || undefined,
+    });
+  }, [accountId, chatId]);
+
   const handleSend = useCallback(async () => {
     const trimmedText = text.trim();
     if ((!trimmedText && !mediaFile) || sending) return;
 
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
-    // In a real app we'd show a thumbnail for media too
     addOptimisticMessage(chatId, tempId, trimmedText);
     setText('');
     const currentMedia = mediaFile;
@@ -134,18 +162,7 @@ export const MessageInput = ({ accountId, chatId, topicId, onMessageSent }: Mess
     try {
       let sentMessage: Message;
       if (currentMedia) {
-        // Read file as ArrayBuffer and send as bytes
-        const buffer = await currentMedia.arrayBuffer();
-        const bytes = Array.from(new Uint8Array(buffer));
-
-        sentMessage = await invoke<Message>('send_media', {
-          accountId,
-          chatId,
-          mediaBytes: bytes,
-          fileName: currentMedia.name,
-          mimeType: currentMedia.type,
-          caption: trimmedText || undefined,
-        });
+        sentMessage = await sendMediaBytes(currentMedia, trimmedText);
       } else {
         sentMessage = await invoke<Message>('send_message', {
           accountId,
@@ -163,7 +180,7 @@ export const MessageInput = ({ accountId, chatId, topicId, onMessageSent }: Mess
     } finally {
       setSending(false);
     }
-  }, [text, sending, mediaFile, accountId, chatId, addOptimisticMessage, confirmOptimisticMessage, failOptimisticMessage, onMessageSent, clearMedia]);
+  }, [text, sending, mediaFile, accountId, chatId, topicId, addOptimisticMessage, confirmOptimisticMessage, failOptimisticMessage, onMessageSent, clearMedia, sendMediaBytes]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -171,6 +188,68 @@ export const MessageInput = ({ accountId, chatId, topicId, onMessageSent }: Mess
       handleSend();
     }
   }, [handleSend]);
+
+  // Voice recording handlers
+  const handleVoiceRecordingComplete = useCallback(async (blob: Blob, _duration: number) => {
+    setIsRecording(false);
+    const voiceFile = new File([blob], `voice_${Date.now()}.ogg`, { type: 'audio/ogg' });
+
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    addOptimisticMessage(chatId, tempId, t('voice_recording'));
+    setSending(true);
+
+    try {
+      const sentMessage = await sendMediaBytes(voiceFile, '');
+      confirmOptimisticMessage(chatId, tempId, sentMessage);
+      onMessageSent?.(sentMessage);
+    } catch (error) {
+      console.error('[MessageInput] Failed to send voice message:', error);
+      failOptimisticMessage(chatId, tempId);
+    } finally {
+      setSending(false);
+    }
+  }, [chatId, addOptimisticMessage, confirmOptimisticMessage, failOptimisticMessage, onMessageSent, sendMediaBytes, t]);
+
+  const handleVoiceCancel = useCallback(() => {
+    setIsRecording(false);
+  }, []);
+
+  const handleStartRecording = useCallback(() => {
+    setIsRecording(true);
+  }, []);
+
+  // Attachment menu handlers
+  const handleAttachToggle = useCallback(() => {
+    setAttachMenuOpen((prev) => !prev);
+  }, []);
+
+  const handleSelectPhoto = useCallback(() => {
+    setAttachMenuOpen(false);
+    photoInputRef.current?.click();
+  }, []);
+
+  const handleSelectDocument = useCallback(() => {
+    setAttachMenuOpen(false);
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleSelectCamera = useCallback(() => {
+    setAttachMenuOpen(false);
+    setCameraOpen(true);
+  }, []);
+
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      applyMediaFile(file);
+    }
+    // Reset input so the same file can be selected again
+    e.target.value = '';
+  }, [applyMediaFile]);
+
+  const handleCameraCapture = useCallback((file: File) => {
+    applyMediaFile(file);
+  }, [applyMediaFile]);
 
   return (
     <div
@@ -186,47 +265,123 @@ export const MessageInput = ({ accountId, chatId, topicId, onMessageSent }: Mess
         <div className="media-preview-container">
           <div className="media-preview-item">
             {mediaFile?.type.startsWith('image/') ? (
-              <img src={mediaPreview} alt="Paste preview" />
+              <img src={mediaPreview} alt="Preview" />
+            ) : mediaFile?.type.startsWith('video/') ? (
+              <video src={mediaPreview} className="media-preview-video" muted />
             ) : (
               <div className="file-preview">
-                <span className="file-icon">📎</span>
+                <span className="file-icon">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                </span>
                 <span className="file-name">{mediaFile?.name}</span>
+                {mediaFile && <span className="file-size">{formatFileSize(mediaFile.size)}</span>}
               </div>
             )}
-            <button className="remove-media" onClick={clearMedia} title="Remove media">×</button>
+            <button className="remove-media" onClick={clearMedia} title={t('cancel')}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
           </div>
         </div>
       )}
       <div className="message-input-container">
-        <textarea
-          className="message-input"
-          placeholder={mediaPreview ? t('add_caption') : t('write_message')}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          disabled={sending}
-          rows={1}
-          autoFocus
-        />
-        <button
-          className="send-button"
-          onClick={handleSend}
-          disabled={(!text.trim() && !mediaFile) || sending}
-          title={t('send_enter')}
-        >
-          {sending ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="spin">
-              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-            </svg>
-          ) : (
+        {/* Attachment button */}
+        <div className="attach-btn-wrapper">
+          <button
+            className={`attach-btn${attachMenuOpen ? ' active' : ''}`}
+            onClick={handleAttachToggle}
+            title={t('attach_file')}
+          >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 2L11 13" />
-              <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
             </svg>
-          )}
-        </button>
+          </button>
+          <AttachmentMenu
+            isOpen={attachMenuOpen}
+            onClose={() => setAttachMenuOpen(false)}
+            onSelectPhoto={handleSelectPhoto}
+            onSelectDocument={handleSelectDocument}
+            onSelectCamera={handleSelectCamera}
+          />
+        </div>
+
+        {isRecording ? (
+          <VoiceRecorder
+            onRecordingComplete={handleVoiceRecordingComplete}
+            onCancel={handleVoiceCancel}
+            isRecording={isRecording}
+            onStartRecording={handleStartRecording}
+          />
+        ) : (
+          <>
+            <textarea
+              className="message-input"
+              placeholder={mediaPreview ? t('add_caption') : t('write_message')}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              disabled={sending}
+              rows={1}
+              autoFocus
+            />
+            {/* Show mic button when no text/media, send button otherwise */}
+            {!text.trim() && !mediaFile ? (
+              <VoiceRecorder
+                onRecordingComplete={handleVoiceRecordingComplete}
+                onCancel={handleVoiceCancel}
+                isRecording={false}
+                onStartRecording={handleStartRecording}
+              />
+            ) : (
+              <button
+                className="send-button"
+                onClick={handleSend}
+                disabled={(!text.trim() && !mediaFile) || sending}
+                title={t('send_enter')}
+              >
+                {sending ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="spin">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 2L11 13" />
+                    <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+                  </svg>
+                )}
+              </button>
+            )}
+          </>
+        )}
       </div>
+
+      {/* Hidden file inputs */}
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*,video/*"
+        style={{ display: 'none' }}
+        onChange={handleFileInputChange}
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        style={{ display: 'none' }}
+        onChange={handleFileInputChange}
+      />
+
+      {/* Camera capture modal */}
+      <CameraCapture
+        isOpen={cameraOpen}
+        onCapture={handleCameraCapture}
+        onClose={() => setCameraOpen(false)}
+      />
     </div>
   );
 };

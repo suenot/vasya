@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Chat, Message } from '../../types/telegram';
 import { useConnectionStore } from '../../store/connectionStore';
@@ -22,7 +22,11 @@ const STATUS_KEYS: Record<string, TranslationKey> = {
   disconnected: 'status_offline',
 };
 
-export const ChatHeader = ({ chat, accountId, onScrollToMessage, onShowInfo, onDeleteChat, onBack }: ChatHeaderProps) => {
+export interface ChatHeaderHandle {
+  toggleSearch: () => void;
+}
+
+export const ChatHeader = forwardRef<ChatHeaderHandle, ChatHeaderProps>(({ chat, accountId, onScrollToMessage, onShowInfo, onDeleteChat, onBack }, ref) => {
   const { t } = useTranslation();
   const connectionStatus = useConnectionStore((s) => s.status);
   const isMuted = useMuteStore((s) => s.isMuted);
@@ -103,6 +107,8 @@ export const ChatHeader = ({ chat, accountId, onScrollToMessage, onShowInfo, onD
     setShowMenu(false);
   }, []);
 
+  useImperativeHandle(ref, () => ({ toggleSearch }), [toggleSearch]);
+
   const navigateResult = useCallback((direction: 'prev' | 'next') => {
     if (searchResults.length === 0) return;
     setCurrentResultIndex((prev) => {
@@ -181,6 +187,29 @@ export const ChatHeader = ({ chat, accountId, onScrollToMessage, onShowInfo, onD
               </div>
             </div>
             <div className="content-header-actions">
+              <button
+                className="icon-button"
+                title={t('call_coming_soon')}
+                disabled
+                style={{ opacity: 0.4, cursor: 'not-allowed' }}
+                onClick={() => {}}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" />
+                </svg>
+              </button>
+              <button
+                className="icon-button"
+                title={t('call_coming_soon')}
+                disabled
+                style={{ opacity: 0.4, cursor: 'not-allowed' }}
+                onClick={() => {}}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="23 7 16 12 23 17 23 7" />
+                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                </svg>
+              </button>
               <button className="icon-button" title={t('search_messages')} onClick={toggleSearch}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8" />
@@ -247,4 +276,4 @@ export const ChatHeader = ({ chat, accountId, onScrollToMessage, onShowInfo, onD
       )}
     </>
   );
-};
+});

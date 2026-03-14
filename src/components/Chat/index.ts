@@ -3,6 +3,7 @@ export { ChatSearchBar } from './ChatSearchBar';
 export { ChatListItem } from './ChatListItem';
 export { ChatContextMenu } from './ChatContextMenu';
 export { ChatHeader } from './ChatHeader';
+export type { ChatHeaderHandle } from './ChatHeader';
 export { ChatInfoPanel } from './ChatInfoPanel';
 export { ChatList } from './ChatList';
 export { TopicList } from './TopicList';

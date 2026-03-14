@@ -4,7 +4,7 @@ import { AccountSettings } from '../Settings/AccountSettings';
 import { AccountSwitcher } from '../Accounts/AccountSwitcher';
 import { MessageList, MessageListHandle } from '../Messages/MessageList';
 import { prioritizeChat } from '../../hooks/useMediaQueue';
-import { ChatList, ChatHeader, ChatContextMenu, ChatInfoPanel, ChatFilters, TopicList } from '../Chat';
+import { ChatList, ChatHeader, ChatHeaderHandle, ChatContextMenu, ChatInfoPanel, ChatFilters, TopicList } from '../Chat';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useAccountsStore } from '../../store/accountsStore';
 import { useChatsStore } from '../../store/chatsStore';
@@ -12,6 +12,7 @@ import { useConnectionStore } from '../../store/connectionStore';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useTauriEvent } from '../../hooks/useTauriEvent';
 import { useHotkeysStore } from '../../store/hotkeysStore';
+import { useMuteStore } from '../../store/muteStore';
 import { useFolderStore } from '../../store/folderStore';
 import { Chat, ForumTopic } from '../../types/telegram';
 import { useTranslation } from '../../i18n';
@@ -52,6 +53,9 @@ export const MainLayout = () => {
   const [selectedTopic, setSelectedTopic] = useState<ForumTopic | null>(null);
   const messageListRef = useRef<MessageListHandle>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const chatHeaderRef = useRef<ChatHeaderHandle>(null);
+  const chatListRef = useRef<HTMLDivElement>(null);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
   const debouncedSearch = useDebounce(searchQuery, 200);
 
@@ -254,8 +258,15 @@ export const MainLayout = () => {
     setTimeout(() => setHighlightedMessageId(null), 2000);
   }, []);
 
+  // Reset highlighted index when search query or filtered chats change
+  useEffect(() => {
+    setHighlightedIndex(-1);
+  }, [debouncedSearch, activeFilter]);
+
   // Global Hotkeys Listener
   const hotkeys = useHotkeysStore((s) => s.hotkeys);
+  const toggleMute = useMuteStore((s) => s.toggleMute);
+  const visibleTabs = useFolderStore((s) => s.getVisibleTabs)();
 
   useEffect(() => {
     const handleGlobalKeydown = (e: KeyboardEvent) => {
@@ -265,52 +276,75 @@ export const MainLayout = () => {
         if (!config) return false;
 
         const keys = config.keys;
-        const modifiers = {
-          Meta: e.metaKey,
-          Ctrl: e.ctrlKey,
-          Alt: e.altKey,
-          Shift: e.shiftKey,
-        };
-
-        // Check if all modifier keys in config are pressed (and only those?)
-        // Simplified check: Just ensure every key in 'keys' is present in event
         const configModifiers = keys.filter(k => ['Meta', 'Ctrl', 'Alt', 'Shift'].includes(k));
         const configNonModifiers = keys.filter(k => !['Meta', 'Ctrl', 'Alt', 'Shift'].includes(k));
 
-        // Check modifiers
-        // For strict matching: all event modifiers must match config modifiers exactly?
-        // Or just allow extra modifiers? Usually strict is better to allow other combos.
+        if (configModifiers.includes('Meta') !== e.metaKey) return false;
+        if (configModifiers.includes('Ctrl') !== e.ctrlKey) return false;
+        if (configModifiers.includes('Alt') !== e.altKey) return false;
+        if (configModifiers.includes('Shift') !== e.shiftKey) return false;
 
-        // Strict modifier check:
-        if (configModifiers.includes('Meta') !== modifiers.Meta) return false;
-        if (configModifiers.includes('Ctrl') !== modifiers.Ctrl) return false;
-        if (configModifiers.includes('Alt') !== modifiers.Alt) return false;
-        if (configModifiers.includes('Shift') !== modifiers.Shift) return false;
-
-        // Check non-modifier key
-        // e.key might be 'ArrowDown', 'k', ',' etc.
-        // Hotkey config might store 'ArrowDown', 'k', ','
-        // Case insensitive for letters usually? e.key is case sensitive ('K' vs 'k')
-        if (configNonModifiers.length === 0) return false; // Modifier only? unlikley for these actions
-
+        if (configNonModifiers.length === 0) return false;
         const targetKey = configNonModifiers[0];
         if (targetKey.toLowerCase() !== e.key.toLowerCase()) return false;
 
         return true;
       };
 
-      if (isMatch('focus_search')) {
-        e.preventDefault();
-        setIsSearchExpanded(true);
-        setTimeout(() => searchInputRef.current?.focus(), 50);
-      } else if (isMatch('open_settings')) {
-        e.preventDefault();
-        setShowSettings((prev) => !prev);
-      } else if (isMatch('close_chat')) {
-        // Close modal first
+      // --- Search result keyboard navigation (Arrow keys + Enter in search input) ---
+      const isSearchInputFocused = document.activeElement === searchInputRef.current;
+      const isSearchActive = isSearchExpanded && searchQuery.trim().length > 0;
+
+      if (isSearchInputFocused && isSearchActive && filteredChats.length > 0) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setHighlightedIndex((prev) => {
+            const next = prev < filteredChats.length - 1 ? prev + 1 : 0;
+            // Scroll highlighted item into view
+            setTimeout(() => {
+              chatListRef.current?.querySelector('.chat-item.keyboard-highlighted')?.scrollIntoView({ block: 'nearest' });
+            }, 0);
+            return next;
+          });
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setHighlightedIndex((prev) => {
+            const next = prev > 0 ? prev - 1 : filteredChats.length - 1;
+            setTimeout(() => {
+              chatListRef.current?.querySelector('.chat-item.keyboard-highlighted')?.scrollIntoView({ block: 'nearest' });
+            }, 0);
+            return next;
+          });
+          return;
+        }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const idx = highlightedIndex >= 0 ? highlightedIndex : 0;
+          if (filteredChats[idx]) {
+            handleChatClick(filteredChats[idx].id);
+            setSearchQuery('');
+            setIsSearchExpanded(false);
+            setHighlightedIndex(-1);
+            searchInputRef.current?.blur();
+          }
+          return;
+        }
+      }
+
+      // --- Escape: context-sensitive close ---
+      if (e.key === 'Escape' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
         if (showSettings) {
           e.preventDefault();
           setShowSettings(false);
+          return;
+        }
+        if (isSearchExpanded) {
+          e.preventDefault();
+          setSearchQuery('');
+          setIsSearchExpanded(false);
+          setHighlightedIndex(-1);
           return;
         }
         if (showChatInfo) {
@@ -326,28 +360,155 @@ export const MainLayout = () => {
         if (selectedChatId) {
           e.preventDefault();
           setSelectedChatId(null);
+          return;
         }
-      } else if (isMatch('next_chat')) {
+        return;
+      }
+
+      // --- Don't process other hotkeys when typing in an input/textarea ---
+      const tag = (e.target as HTMLElement)?.tagName;
+      const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable;
+
+      // Focus search (Cmd+K / Ctrl+K)
+      if (isMatch('focus_search')) {
         e.preventDefault();
-        // Select next chat in filtered list
+        setIsSearchExpanded(true);
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+        return;
+      }
+
+      // Search in chat (Cmd+F / Ctrl+F)
+      if (isMatch('search_in_chat')) {
+        e.preventDefault();
+        if (selectedChatId) {
+          chatHeaderRef.current?.toggleSearch();
+        } else {
+          // No chat open: focus sidebar search instead
+          setIsSearchExpanded(true);
+          setTimeout(() => searchInputRef.current?.focus(), 50);
+        }
+        return;
+      }
+
+      // Open settings
+      if (isMatch('open_settings')) {
+        e.preventDefault();
+        setShowSettings((prev) => !prev);
+        return;
+      }
+
+      // Close panel (Ctrl+W)
+      if (isMatch('close_panel')) {
+        e.preventDefault();
+        if (showSettings) { setShowSettings(false); return; }
+        if (showChatInfo) { setShowChatInfo(false); return; }
+        if (selectedTopic) { setSelectedTopic(null); return; }
+        if (selectedChatId) { setSelectedChatId(null); return; }
+        return;
+      }
+
+      // Skip navigation/action hotkeys when typing
+      if (isTyping) return;
+
+      // Next chat (Alt+Down)
+      if (isMatch('next_chat') || isMatch('next_chat_tab')) {
+        e.preventDefault();
         if (filteredChats.length > 0) {
           const idx = selectedChatId ? filteredChats.findIndex(c => c.id === selectedChatId) : -1;
           const nextIdx = (idx + 1) % filteredChats.length;
           handleChatClick(filteredChats[nextIdx].id);
         }
-      } else if (isMatch('prev_chat')) {
+        return;
+      }
+
+      // Prev chat (Alt+Up)
+      if (isMatch('prev_chat') || isMatch('prev_chat_tab')) {
         e.preventDefault();
         if (filteredChats.length > 0) {
           const idx = selectedChatId ? filteredChats.findIndex(c => c.id === selectedChatId) : -1;
           const prevIdx = idx <= 0 ? filteredChats.length - 1 : idx - 1;
           handleChatClick(filteredChats[prevIdx].id);
         }
+        return;
+      }
+
+      // Next unread chat (Alt+Shift+Down)
+      if (isMatch('next_unread_chat')) {
+        e.preventDefault();
+        if (filteredChats.length > 0) {
+          const startIdx = selectedChatId ? filteredChats.findIndex(c => c.id === selectedChatId) : -1;
+          for (let i = 1; i <= filteredChats.length; i++) {
+            const idx = (startIdx + i) % filteredChats.length;
+            if (filteredChats[idx].unreadCount > 0) {
+              handleChatClick(filteredChats[idx].id);
+              break;
+            }
+          }
+        }
+        return;
+      }
+
+      // Prev unread chat (Alt+Shift+Up)
+      if (isMatch('prev_unread_chat')) {
+        e.preventDefault();
+        if (filteredChats.length > 0) {
+          const startIdx = selectedChatId ? filteredChats.findIndex(c => c.id === selectedChatId) : filteredChats.length;
+          for (let i = 1; i <= filteredChats.length; i++) {
+            const idx = (startIdx - i + filteredChats.length) % filteredChats.length;
+            if (filteredChats[idx].unreadCount > 0) {
+              handleChatClick(filteredChats[idx].id);
+              break;
+            }
+          }
+        }
+        return;
+      }
+
+      // Mute/unmute chat (Ctrl+Shift+M)
+      if (isMatch('mute_chat')) {
+        e.preventDefault();
+        if (selectedChatId) {
+          toggleMute(selectedChatId);
+        }
+        return;
+      }
+
+      // Folder/tab switching (Ctrl+1-9)
+      for (let n = 1; n <= 9; n++) {
+        if (isMatch(`folder_${n}`)) {
+          e.preventDefault();
+          const tab = visibleTabs[n - 1];
+          if (tab) {
+            setActiveFilter(tab.id);
+          }
+          return;
+        }
+      }
+
+      // Scroll to top (Ctrl+Home)
+      if (isMatch('scroll_to_top')) {
+        e.preventDefault();
+        messageListRef.current?.scrollToMessage(0);
+        return;
+      }
+
+      // Scroll to bottom (Ctrl+End)
+      if (isMatch('scroll_to_bottom')) {
+        e.preventDefault();
+        // Scroll the messages area to the bottom
+        const messagesArea = document.querySelector('.messages-area');
+        if (messagesArea) {
+          const scrollable = messagesArea.querySelector('.message-list');
+          if (scrollable) scrollable.scrollTop = scrollable.scrollHeight;
+        }
+        return;
       }
     };
 
     window.addEventListener('keydown', handleGlobalKeydown);
     return () => window.removeEventListener('keydown', handleGlobalKeydown);
-  }, [hotkeys, filteredChats, selectedChatId, selectedTopic, showSettings, showChatInfo, handleChatClick]);
+  }, [hotkeys, filteredChats, selectedChatId, selectedTopic, showSettings, showChatInfo,
+      isSearchExpanded, searchQuery, highlightedIndex, handleChatClick, toggleMute, visibleTabs]);
 
   return (
     <div className={`main-layout ${selectedChatId ? 'chat-open' : ''} layout-${folderLayout}`}>
@@ -411,22 +572,26 @@ export const MainLayout = () => {
           {folderLayout === 'horizontal' && (
             <ChatFilters activeFilter={activeFilter} onFilterChange={setActiveFilter} />
           )}
-          <ChatList
-            chats={filteredChats}
-            loading={loading}
-            error={error}
-            selectedChatId={selectedChatId}
-            favorites={favorites}
-            searchQuery={searchQuery}
-            onChatClick={handleChatClick}
-            onContextMenu={handleContextMenu}
-          />
+          <div ref={chatListRef}>
+            <ChatList
+              chats={filteredChats}
+              loading={loading}
+              error={error}
+              selectedChatId={selectedChatId}
+              favorites={favorites}
+              searchQuery={searchQuery}
+              highlightedIndex={highlightedIndex}
+              onChatClick={handleChatClick}
+              onContextMenu={handleContextMenu}
+            />
+          </div>
         </div>
       </aside>
 
       <main className="content">
         <div className="content-bg" />
         <ChatHeader
+          ref={chatHeaderRef}
           chat={selectedChat}
           accountId={activeAccount?.id}
           onScrollToMessage={handleScrollToMessage}
