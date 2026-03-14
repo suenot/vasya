@@ -358,6 +358,15 @@ export const en = {
   call_not_supported: 'Audio/video calls are not yet supported',
   call_in_development: 'This feature is in development',
 
+  // Search Sections
+  contacts_and_chats: 'Contacts and Chats',
+  global_search: 'Global Search',
+  show_more: 'Show more',
+  messages_section: 'Messages',
+  from_all_chats: 'From All Chats',
+  subscribers: 'subscribers',
+  search_no_results: 'No results found',
+
   // API Settings
   api_fill_fields: 'Fill in all fields',
   api_id_number: 'API ID must be a number',

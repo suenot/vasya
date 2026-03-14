@@ -360,6 +360,15 @@ export const ru: Record<TranslationKey, string> = {
   call_not_supported: 'Аудио/видеозвонки пока не поддерживаются',
   call_in_development: 'Функция в разработке',
 
+  // Search Sections
+  contacts_and_chats: 'Контакты и чаты',
+  global_search: 'Глобальный поиск',
+  show_more: 'Показать ещё',
+  messages_section: 'Сообщения',
+  from_all_chats: 'Из всех чатов',
+  subscribers: 'подписчиков',
+  search_no_results: 'Ничего не найдено',
+
   // API Settings
   api_fill_fields: 'Заполните все поля',
   api_id_number: 'API ID должен быть числом',

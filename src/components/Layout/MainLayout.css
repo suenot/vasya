@@ -94,6 +94,49 @@
   opacity: 1;
 }
 
+/* Folder tab icon wrapper for badge positioning */
+.filter-icon-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Unread badge on folder/tab icons */
+.folder-unread-badge {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  background: #4fae4e;
+  color: white;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0 4px;
+  line-height: 1;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Horizontal layout: position badge inline next to label */
+.chat-filters.horizontal .filter-icon-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.chat-filters.horizontal .folder-unread-badge {
+  position: relative;
+  top: auto;
+  right: auto;
+  margin-left: 6px;
+}
+
 .layout-vertical .sidebar {
   border-left: none;
 }
@@ -505,6 +548,10 @@
   font-weight: 600;
   padding: 0 6px;
   flex-shrink: 0;
+}
+
+.unread-count.muted {
+  background: var(--text-tertiary, #8e8e93);
 }
 
 .chat-item.selected .unread-count {

@@ -1,1 +1,112 @@
-/* ChatList styles - currently inheriting from MainLayout.css */
+/* ChatList styles */
+
+/* Search Sections */
+.search-section {
+  margin-bottom: 4px;
+}
+
+.search-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  user-select: none;
+}
+
+.search-section-badge {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.search-section-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.search-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--accent-color);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.search-section-empty {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+/* Global Search Result Items */
+.global-result-item {
+  cursor: pointer;
+}
+
+.global-result-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.global-result-username {
+  color: var(--accent-color);
+  font-size: 13px;
+}
+
+.global-result-subs {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.global-result-type {
+  display: flex;
+  align-items: center;
+  color: var(--text-tertiary);
+}
+
+/* Message Result Items */
+.message-result-item {
+  cursor: pointer;
+}
+
+.message-result-preview {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Show More Button */
+.show-more-btn {
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  color: var(--accent-color);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s;
+  border-radius: 8px;
+}
+
+.show-more-btn:hover {
+  background: var(--sidebar-hover);
+}

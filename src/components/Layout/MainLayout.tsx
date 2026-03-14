@@ -14,7 +14,7 @@ import { useTauriEvent } from '../../hooks/useTauriEvent';
 import { useHotkeysStore } from '../../store/hotkeysStore';
 import { useMuteStore } from '../../store/muteStore';
 import { useFolderStore } from '../../store/folderStore';
-import { Chat, ForumTopic } from '../../types/telegram';
+import { Chat, ForumTopic, GlobalSearchResult, GlobalMessageResult } from '../../types/telegram';
 import { useTranslation } from '../../i18n';
 import './MainLayout.css';
 
@@ -58,6 +58,15 @@ export const MainLayout = () => {
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
   const debouncedSearch = useDebounce(searchQuery, 200);
+
+  // Global search state
+  const [globalResults, setGlobalResults] = useState<GlobalSearchResult[]>([]);
+  const [globalLoading, setGlobalLoading] = useState(false);
+  const [globalSearchLimit, setGlobalSearchLimit] = useState(5);
+
+  // Cross-chat message search state
+  const [messageResults, setMessageResults] = useState<GlobalMessageResult[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
 
   // Mutable refs for streaming chat-loaded events without re-renders
   const [chatIdsSet] = useState(() => new Set<number>());
@@ -167,6 +176,52 @@ export const MainLayout = () => {
     loadAndSync();
   }, [activeAccountId]);
 
+  // Unread counts per folder tab — memoized
+  const unreadCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const unreadChats = chats.filter(c => c.unreadCount > 0);
+
+    // "all" — all chats with unread
+    counts['all'] = unreadChats.length;
+
+    // "contacts" — user chats that aren't bots
+    counts['contacts'] = unreadChats.filter(
+      c => c.chatType === 'user' && !c.username?.toLowerCase().includes('bot')
+    ).length;
+
+    // "chats" — groups + channels
+    counts['chats'] = unreadChats.filter(
+      c => c.chatType === 'group' || c.chatType === 'channel'
+    ).length;
+
+    // "favorites"
+    counts['favorites'] = unreadChats.filter(c => favorites.has(c.id)).length;
+
+    // Custom folders
+    for (const folder of folders) {
+      counts[folder.id] = unreadChats.filter(chat => {
+        if (folder.excludedChatIds.includes(chat.id)) return false;
+        if (folder.includedChatIds.includes(chat.id)) return true;
+
+        let chatType: 'contacts' | 'non_contacts' | 'groups' | 'channels' | 'bots' = 'non_contacts';
+        if (chat.chatType === 'user') {
+          chatType = chat.username?.toLowerCase().includes('bot') ? 'bots' : 'contacts';
+        } else if (chat.chatType === 'group') {
+          chatType = 'groups';
+        } else if (chat.chatType === 'channel') {
+          chatType = 'channels';
+        }
+
+        if (folder.excludedChatTypes.includes(chatType)) return false;
+        if (folder.includedChatTypes.includes(chatType)) return true;
+
+        return false;
+      }).length;
+    }
+
+    return counts;
+  }, [chats, favorites, folders]);
+
   // Filtered chats — memoized with debounced search
   const filteredChats = useMemo(() => {
     return chats.filter((chat) => {
@@ -214,6 +269,97 @@ export const MainLayout = () => {
     });
   }, [chats, debouncedSearch, activeFilter, favorites, folders]);
 
+  // Global search effect (contacts.Search)
+  useEffect(() => {
+    if (!debouncedSearch.trim() || !activeAccount) {
+      setGlobalResults([]);
+      setGlobalLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setGlobalLoading(true);
+
+    invoke<GlobalSearchResult[]>('global_search', {
+      accountId: activeAccount.id,
+      query: debouncedSearch.trim(),
+      limit: globalSearchLimit,
+    })
+      .then((results) => {
+        if (!cancelled) {
+          setGlobalResults(results);
+          setGlobalLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('Global search failed:', err);
+          setGlobalResults([]);
+          setGlobalLoading(false);
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [debouncedSearch, activeAccount, globalSearchLimit]);
+
+  // Cross-chat message search effect (messages.SearchGlobal)
+  useEffect(() => {
+    if (!debouncedSearch.trim() || !activeAccount) {
+      setMessageResults([]);
+      setMessagesLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setMessagesLoading(true);
+
+    invoke<GlobalMessageResult[]>('search_all_messages', {
+      accountId: activeAccount.id,
+      query: debouncedSearch.trim(),
+      limit: 10,
+    })
+      .then((results) => {
+        if (!cancelled) {
+          setMessageResults(results);
+          setMessagesLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('Message search failed:', err);
+          setMessageResults([]);
+          setMessagesLoading(false);
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [debouncedSearch, activeAccount]);
+
+  const handleGlobalResultClick = useCallback((result: GlobalSearchResult) => {
+    // Open the chat by ID — for global results, use the result id directly
+    setSelectedChatId(result.id);
+    setSelectedTopic(null);
+    setSearchQuery('');
+    setIsSearchExpanded(false);
+  }, []);
+
+  const handleMessageResultClick = useCallback((result: GlobalMessageResult) => {
+    setSelectedChatId(result.chatId);
+    setSelectedTopic(null);
+    setSearchQuery('');
+    setIsSearchExpanded(false);
+    // Scroll to message after a short delay to let the chat load
+    setTimeout(() => {
+      setHighlightedMessageId(result.messageId);
+      messageListRef.current?.scrollToMessage(result.messageId);
+      setTimeout(() => setHighlightedMessageId(null), 2000);
+    }, 500);
+  }, []);
+
+  const handleShowMoreGlobal = useCallback(() => {
+    setGlobalSearchLimit((prev) => prev + 20);
+  }, []);
+
   const handleChatClick = useCallback((chatId: number) => {
     setSelectedChatId(chatId);
     setSelectedTopic(null); // Reset topic when switching chats
@@ -258,9 +404,10 @@ export const MainLayout = () => {
     setTimeout(() => setHighlightedMessageId(null), 2000);
   }, []);
 
-  // Reset highlighted index when search query or filtered chats change
+  // Reset highlighted index and global search limit when search query changes
   useEffect(() => {
     setHighlightedIndex(-1);
+    setGlobalSearchLimit(5);
   }, [debouncedSearch, activeFilter]);
 
   // Global Hotkeys Listener
@@ -514,7 +661,7 @@ export const MainLayout = () => {
     <div className={`main-layout ${selectedChatId ? 'chat-open' : ''} layout-${folderLayout}`}>
       {folderLayout === 'vertical' && (
         <aside className="folder-sidebar">
-          <ChatFilters activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+          <ChatFilters activeFilter={activeFilter} onFilterChange={setActiveFilter} unreadCounts={unreadCounts} />
         </aside>
       )}
       <aside className="sidebar">
@@ -570,7 +717,7 @@ export const MainLayout = () => {
             </div>
           </div>
           {folderLayout === 'horizontal' && (
-            <ChatFilters activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+            <ChatFilters activeFilter={activeFilter} onFilterChange={setActiveFilter} unreadCounts={unreadCounts} />
           )}
           <div ref={chatListRef}>
             <ChatList
@@ -583,6 +730,13 @@ export const MainLayout = () => {
               highlightedIndex={highlightedIndex}
               onChatClick={handleChatClick}
               onContextMenu={handleContextMenu}
+              globalResults={globalResults}
+              globalLoading={globalLoading}
+              messageResults={messageResults}
+              messagesLoading={messagesLoading}
+              onGlobalResultClick={handleGlobalResultClick}
+              onMessageResultClick={handleMessageResultClick}
+              onShowMoreGlobal={handleShowMoreGlobal}
             />
           </div>
         </div>

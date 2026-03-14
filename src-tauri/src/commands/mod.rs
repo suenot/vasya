@@ -13,6 +13,7 @@ pub mod flood_wait;
 pub mod stt;
 pub mod folders;
 pub mod topics;
+pub mod search;
 
 pub use auth::*;
 pub use settings::*;
@@ -22,3 +23,4 @@ pub use media::*;
 pub use stt::*;
 pub use folders::*;
 pub use topics::*;
+pub use search::*;

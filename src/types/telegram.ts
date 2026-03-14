@@ -17,6 +17,7 @@ export interface Chat {
   lastMessage?: string;
   avatarPath?: string;
   isForum?: boolean;
+  isMuted?: boolean;
 }
 
 export interface ForumTopic {
@@ -62,6 +63,23 @@ export interface AccountInfo {
   last_name?: string;
   username?: string;
   is_authorized: boolean;
+}
+
+export interface GlobalSearchResult {
+  id: number;
+  title: string;
+  username?: string;
+  resultType: 'user' | 'group' | 'channel';
+  subscribersCount?: number;
+}
+
+export interface GlobalMessageResult {
+  messageId: number;
+  chatId: number;
+  chatTitle: string;
+  senderName?: string;
+  text?: string;
+  date: number;
 }
 
 export type ChatFilter = 'all' | 'focus';

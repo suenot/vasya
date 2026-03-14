@@ -6,6 +6,7 @@ import { Icon } from '../UI/Icon';
 interface ChatFiltersProps {
   activeFilter: string;
   onFilterChange: (filter: string) => void;
+  unreadCounts?: Record<string, number>;
 }
 
 const BUILTIN_LABELS: Record<string, TranslationKey> = {
@@ -15,7 +16,7 @@ const BUILTIN_LABELS: Record<string, TranslationKey> = {
   favorites: 'filter_favorites',
 };
 
-export const ChatFilters = ({ activeFilter, onFilterChange }: ChatFiltersProps) => {
+export const ChatFilters = ({ activeFilter, onFilterChange, unreadCounts }: ChatFiltersProps) => {
   const { t } = useTranslation();
   const folders = useFolderStore((s) => s.folders);
   const tabs = useFolderStore((s) => s.tabs);
@@ -58,7 +59,14 @@ export const ChatFilters = ({ activeFilter, onFilterChange }: ChatFiltersProps) 
             onClick={() => onFilterChange(tab.id)}
             title={info.label}
           >
-            {folderLayout === 'vertical' && <Icon name={info.icon} size={24} className="filter-icon" />}
+            <span className="filter-icon-wrapper">
+              {folderLayout === 'vertical' && <Icon name={info.icon} size={24} className="filter-icon" />}
+              {unreadCounts && unreadCounts[tab.id] > 0 && (
+                <span className="folder-unread-badge">
+                  {unreadCounts[tab.id] > 99 ? '99+' : unreadCounts[tab.id]}
+                </span>
+              )}
+            </span>
             <span className="filter-label">{info.label}</span>
           </button>
         );

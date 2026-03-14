@@ -75,6 +75,8 @@ pub fn run() {
             commands::get_storage_mode,
             commands::set_storage_mode,
             commands::get_forum_topics,
+            commands::global_search,
+            commands::search_all_messages,
         ])
         .setup(|app| {
             let app_dir = app

@@ -80,7 +80,9 @@ export const ChatListItem = memo(({
             {chat.lastMessage || t('no_messages')}
           </div>
           {chat.unreadCount > 0 && (
-            <div className="unread-count">{chat.unreadCount}</div>
+            <div className={`unread-count${chat.isMuted ? ' muted' : ''}`}>
+              {chat.unreadCount > 999 ? '999+' : chat.unreadCount}
+            </div>
           )}
         </div>
       </div>

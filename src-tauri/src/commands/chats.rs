@@ -10,6 +10,23 @@ use grammers_session::defs::PeerRef;
 
 use crate::AppState;
 use super::flood_wait::with_flood_wait_retry;
+use grammers_tl_types as tl;
+
+/// Extract unread_count and is_muted from the raw TL Dialog enum.
+fn extract_dialog_meta(raw: &tl::enums::Dialog) -> (i32, bool) {
+    match raw {
+        tl::enums::Dialog::Dialog(d) => {
+            let muted = match &d.notify_settings {
+                tl::enums::PeerNotifySettings::Settings(s) => {
+                    // mute_until > 0 means the chat is muted (Telegram uses i32::MAX for "forever")
+                    s.mute_until.map_or(false, |t| t > 0)
+                }
+            };
+            (d.unread_count, muted)
+        }
+        tl::enums::Dialog::Folder(_) => (0, false),
+    }
+}
 
 /// Max concurrent avatar downloads to avoid FLOOD_WAIT
 const MAX_CONCURRENT_AVATAR_DOWNLOADS: usize = 3;
@@ -25,6 +42,7 @@ pub struct Chat {
     pub last_message: Option<String>,
     pub avatar_path: Option<String>,
     pub is_forum: bool,
+    pub is_muted: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -63,6 +81,7 @@ pub async fn get_cached_chats(
             last_message: r.last_message,
             avatar_path: r.avatar_path,
             is_forum: r.is_forum,
+            is_muted: false, // Not persisted in storage yet
         })
         .collect();
 
@@ -165,15 +184,18 @@ pub async fn start_loading_chats(
                 }
             });
 
+        let (unread_count, is_muted) = extract_dialog_meta(&dialog.raw);
+
         let chat = Chat {
             id: chat_id,
             title: title.clone(),
             username: username.clone(),
-            unread_count: 0, // TODO: get actual unread count
+            unread_count,
             chat_type: chat_type.to_string(),
             last_message: last_message_text.clone(),
             avatar_path: cached_avatar.clone(),
             is_forum,
+            is_muted,
         };
 
         // EMIT IMMEDIATELY — no waiting for avatar download or DB save
@@ -223,7 +245,7 @@ pub async fn start_loading_chats(
                         username: username.clone(),
                         avatar_path: avatar_path.clone(),
                         last_message: last_message_text.clone(),
-                        unread_count: 0,
+                        unread_count,
                         is_forum,
                     };
                     if let Err(e) = storage.save_chat(&record).await {
@@ -293,15 +315,18 @@ pub async fn get_chats(
         let chat_id = PeerRef::from(peer).id.bot_api_dialog_id();
         let avatar_path = download_avatar_for_peer(&wrapper.client, peer, chat_id, &avatars_dir, &semaphore).await;
 
+        let (unread_count, is_muted) = extract_dialog_meta(&dialog.raw);
+
         chats.push(Chat {
             id: chat_id,
             title: title.clone(),
             username,
-            unread_count: 0,
+            unread_count,
             chat_type: chat_type.to_string(),
             last_message: None,
             avatar_path,
             is_forum,
+            is_muted,
         });
     }
 
