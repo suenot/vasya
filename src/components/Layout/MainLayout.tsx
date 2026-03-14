@@ -557,6 +557,26 @@ export const MainLayout = () => {
       // Skip navigation/action hotkeys when typing
       if (isTyping) return;
 
+      // Arrow Down/Up without modifiers: navigate chat list
+      if (e.key === 'ArrowDown' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        e.preventDefault();
+        if (filteredChats.length > 0) {
+          const idx = selectedChatId ? filteredChats.findIndex(c => c.id === selectedChatId) : -1;
+          const nextIdx = idx < filteredChats.length - 1 ? idx + 1 : 0;
+          handleChatClick(filteredChats[nextIdx].id);
+        }
+        return;
+      }
+      if (e.key === 'ArrowUp' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        e.preventDefault();
+        if (filteredChats.length > 0) {
+          const idx = selectedChatId ? filteredChats.findIndex(c => c.id === selectedChatId) : -1;
+          const prevIdx = idx <= 0 ? filteredChats.length - 1 : idx - 1;
+          handleChatClick(filteredChats[prevIdx].id);
+        }
+        return;
+      }
+
       // Next chat (Alt+Down)
       if (isMatch('next_chat') || isMatch('next_chat_tab')) {
         e.preventDefault();
@@ -704,6 +724,10 @@ export const MainLayout = () => {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onBlur={() => { if (!searchQuery) setIsSearchExpanded(false); }}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                 />
               </div>
               {!isSearchExpanded && (
@@ -769,6 +793,7 @@ export const MainLayout = () => {
                 accountId={activeAccount.id}
                 chatId={selectedChat.id}
                 chatTitle={selectedTopic ? selectedTopic.title : selectedChat.title}
+                chatType={selectedChat.chatType}
                 highlightedMessageId={highlightedMessageId}
                 topicId={selectedTopic?.id}
                 onBackToTopics={selectedChat.isForum ? handleBackToTopics : undefined}

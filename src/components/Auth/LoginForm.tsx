@@ -205,6 +205,10 @@ export const LoginForm = ({ onCancel }: LoginFormProps) => {
               onChange={handlePhoneChange}
               disabled={submitting}
               autoFocus
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
             />
             {error && <div className="login-error">{error}</div>}
             <button type="submit" className="login-button" disabled={submitting}>
@@ -225,7 +229,10 @@ export const LoginForm = ({ onCancel }: LoginFormProps) => {
               onChange={handleCodeChange}
               disabled={submitting}
               inputMode="numeric"
-              autoComplete="one-time-code"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               autoFocus
             />
             {error && <div className="login-error">{error}</div>}
@@ -247,6 +254,10 @@ export const LoginForm = ({ onCancel }: LoginFormProps) => {
               onChange={(e) => setPassword(e.target.value)}
               disabled={submitting}
               autoFocus
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
             />
             {error && <div className="login-error">{error}</div>}
             <button type="submit" className="login-button" disabled={submitting}>

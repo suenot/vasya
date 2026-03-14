@@ -52,6 +52,10 @@ export const ProfileSettings = ({ onClose }: ProfileSettingsProps) => {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder={t('first_name_placeholder')}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
               />
             </div>
 
@@ -63,6 +67,10 @@ export const ProfileSettings = ({ onClose }: ProfileSettingsProps) => {
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 placeholder={t('last_name_placeholder')}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
               />
             </div>
 
@@ -74,6 +82,10 @@ export const ProfileSettings = ({ onClose }: ProfileSettingsProps) => {
                 onChange={(e) => setBio(e.target.value)}
                 placeholder={t('bio_placeholder')}
                 rows={4}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
               />
             </div>
 
@@ -85,6 +97,10 @@ export const ProfileSettings = ({ onClose }: ProfileSettingsProps) => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="@username"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
               />
               <span className="profile-form-hint">
                 {t('username_hint')}

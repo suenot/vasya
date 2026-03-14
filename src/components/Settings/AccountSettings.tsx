@@ -496,7 +496,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
 
       <div className="settings-group">
         <h3>{t('recognition_language')}</h3>
-        <select className="stt-language-select" value={sttSettings.language} onChange={(e) => saveSttSettings({ language: e.target.value })}>
+        <select className="stt-language-select" value={sttSettings.language} onChange={(e) => saveSttSettings({ language: e.target.value })} autoComplete="off">
           <option value="ru">{t('lang_russian')}</option>
           <option value="en">{t('lang_english')}</option>
           <option value="uk">{t('lang_ukrainian')}</option>
@@ -820,6 +820,10 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
                   onChange={(e) => setNewFolderName(e.target.value)}
                   placeholder={t('folder_name')}
                   autoFocus
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                 />
               </div>
 
@@ -943,6 +947,10 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
               value={tempBackendUrl}
               onChange={(e) => setTempBackendUrl(e.target.value)}
               placeholder={t('storage_backend_url_placeholder' as any)}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
             />
             {urlValidationError && (
               <div className="form-error" style={{ marginTop: 4, fontSize: 13 }}>
@@ -964,6 +972,10 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
               value={tempApiKey}
               onChange={(e) => setTempApiKey(e.target.value)}
               placeholder="Bearer token"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
             />
           </div>
         </>

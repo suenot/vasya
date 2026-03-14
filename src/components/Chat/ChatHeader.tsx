@@ -156,6 +156,10 @@ export const ChatHeader = forwardRef<ChatHeaderHandle, ChatHeaderProps>(({ chat,
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleSearchKeyDown}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
             />
             <div className="header-search-info">
               {searching ? (

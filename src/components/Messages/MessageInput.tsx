@@ -329,6 +329,10 @@ export const MessageInput = ({ accountId, chatId, topicId, onMessageSent }: Mess
               disabled={sending}
               rows={1}
               autoFocus
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
             />
             {/* Show mic button when no text/media, send button otherwise */}
             {!text.trim() && !mediaFile ? (

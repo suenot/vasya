@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef, memo } from 'react';
+import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef, memo, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useMessagesStore, MessageBase } from '../../store/messagesStore';
 import { useTauriEvent } from '../../hooks/useTauriEvent';
@@ -11,6 +11,7 @@ interface MessageListProps {
   accountId: string;
   chatId: number;
   chatTitle: string;
+  chatType?: 'user' | 'group' | 'channel';
   highlightedMessageId?: number | null;
   topicId?: number;
   onBackToTopics?: () => void;
@@ -53,62 +54,190 @@ const formatTime = (timestamp: number) =>
     minute: '2-digit',
   });
 
+// 8 sender colors for group chats (Telegram-style palette)
+const SENDER_COLORS = [
+  '#E17076', // red
+  '#7BC862', // green
+  '#E5CA77', // yellow
+  '#65AADD', // blue
+  '#A695E7', // purple
+  '#EE7AE6', // pink
+  '#6EC9CB', // cyan
+  '#FAA774', // orange
+];
+
+function getSenderColor(userId: number): string {
+  return SENDER_COLORS[Math.abs(userId) % SENDER_COLORS.length];
+}
+
+// Generate initials for avatar fallback
+function getInitials(userId: number): string {
+  // Without real user names, use a letter based on userId
+  const letter = String.fromCharCode(65 + (Math.abs(userId) % 26));
+  return letter;
+}
+
+// Message grouping: messages from same sender within 3 minutes
+const GROUP_TIME_THRESHOLD = 3 * 60; // seconds
+
+interface GroupInfo {
+  isFirstInGroup: boolean;
+  isLastInGroup: boolean;
+}
+
+function computeGrouping(messages: MessageBase[]): GroupInfo[] {
+  const result: GroupInfo[] = new Array(messages.length);
+  for (let i = 0; i < messages.length; i++) {
+    const curr = messages[i];
+    const prev = i > 0 ? messages[i - 1] : null;
+    const next = i < messages.length - 1 ? messages[i + 1] : null;
+
+    const sameSenderAsPrev = prev
+      && prev.is_outgoing === curr.is_outgoing
+      && prev.from_user_id === curr.from_user_id
+      && Math.abs(curr.date - prev.date) < GROUP_TIME_THRESHOLD;
+
+    const sameSenderAsNext = next
+      && next.is_outgoing === curr.is_outgoing
+      && next.from_user_id === curr.from_user_id
+      && Math.abs(next.date - curr.date) < GROUP_TIME_THRESHOLD;
+
+    result[i] = {
+      isFirstInGroup: !sameSenderAsPrev,
+      isLastInGroup: !sameSenderAsNext,
+    };
+  }
+  return result;
+}
+
 // Memoized message item — only re-renders when its own props change
-const MessageItem = memo(({ message, accountId, chatId, isHighlighted }: {
+const MessageItem = memo(({ message, accountId, chatId, isHighlighted, isGroupChat, groupInfo }: {
   message: MessageBase;
   accountId: string;
   chatId: number;
   isHighlighted?: boolean;
-}) => (
-  <div
-    className={`message ${message.is_outgoing ? 'outgoing' : 'incoming'}${isHighlighted ? ' highlighted' : ''}`}
-    data-message-id={message.id}
-  >
-    <div className="message-content">
-      {message.media && message.media.length > 0 && (
-        <div className="message-media-standalone">
-          {message.media.map((media: any, index: number) => (
-            <MediaAttachment
-              key={index}
-              media={media}
-              accountId={accountId}
-              chatId={chatId}
-              messageId={message.id}
-              messageText={message.text}
-            />
-          ))}
+  isGroupChat: boolean;
+  groupInfo: GroupInfo;
+}) => {
+  const { isFirstInGroup, isLastInGroup } = groupInfo;
+  const showSenderName = isGroupChat && !message.is_outgoing && isFirstInGroup && message.from_user_id;
+  const showAvatar = isGroupChat && !message.is_outgoing && isLastInGroup;
+  const senderColor = message.from_user_id ? getSenderColor(message.from_user_id) : SENDER_COLORS[0];
+
+  // Build bubble corner class
+  let cornerClass = '';
+  if (message.is_outgoing) {
+    if (isFirstInGroup && isLastInGroup) cornerClass = 'bubble-single-out';
+    else if (isFirstInGroup) cornerClass = 'bubble-first-out';
+    else if (isLastInGroup) cornerClass = 'bubble-last-out';
+    else cornerClass = 'bubble-mid-out';
+  } else {
+    if (isFirstInGroup && isLastInGroup) cornerClass = 'bubble-single-in';
+    else if (isFirstInGroup) cornerClass = 'bubble-first-in';
+    else if (isLastInGroup) cornerClass = 'bubble-last-in';
+    else cornerClass = 'bubble-mid-in';
+  }
+
+  const groupSpacingClass = isFirstInGroup ? 'group-start' : 'group-continue';
+
+  return (
+    <div
+      className={`message ${message.is_outgoing ? 'outgoing' : 'incoming'} ${groupSpacingClass}${isHighlighted ? ' highlighted' : ''}`}
+      data-message-id={message.id}
+    >
+      {/* Avatar column for incoming group messages */}
+      {isGroupChat && !message.is_outgoing && (
+        <div className="message-avatar-col">
+          {showAvatar && message.from_user_id ? (
+            <div className="message-avatar" style={{ backgroundColor: senderColor }}>
+              {getInitials(message.from_user_id)}
+            </div>
+          ) : (
+            <div className="message-avatar-spacer" />
+          )}
         </div>
       )}
 
-      {message.text && (
-        <div className="message-bubble">
-          <div className="message-text">{message.text}</div>
-          <div className="message-meta">{formatTime(message.date)}</div>
-        </div>
-      )}
+      <div className="message-content">
+        {/* Sender name for group chats */}
+        {showSenderName && (
+          <div className="message-sender-name" style={{ color: senderColor }}>
+            User {message.from_user_id}
+          </div>
+        )}
 
-      {!message.text && message.media && message.media.length > 0 && (
-        <div className="message-meta-standalone">{formatTime(message.date)}</div>
-      )}
+        {message.media && message.media.length > 0 && (
+          <div className={`message-media-standalone ${cornerClass}`}>
+            {message.media.map((media: any, index: number) => (
+              <MediaAttachment
+                key={index}
+                media={media}
+                accountId={accountId}
+                chatId={chatId}
+                messageId={message.id}
+                messageText={message.text}
+              />
+            ))}
+          </div>
+        )}
 
-      {!message.text && (!message.media || message.media.length === 0) && (
-        <div className="message-bubble">
-          <div className="message-text text-muted">(empty message)</div>
-          <div className="message-meta">{formatTime(message.date)}</div>
-        </div>
-      )}
+        {message.text && (
+          <div className={`message-bubble ${cornerClass}`}>
+            <div className="message-text">{message.text}</div>
+            <div className="message-meta">
+              <span className="message-time">{formatTime(message.date)}</span>
+              {message.is_outgoing && (
+                <span className="message-status">
+                  {message._status === 'sending' ? (
+                    <svg className="status-icon" viewBox="0 0 16 16" width="16" height="16">
+                      <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="25" strokeDashoffset="8">
+                        <animateTransform attributeName="transform" type="rotate" from="0 8 8" to="360 8 8" dur="1s" repeatCount="indefinite"/>
+                      </circle>
+                    </svg>
+                  ) : message._status === 'failed' ? (
+                    <span className="status-failed">!</span>
+                  ) : (
+                    <svg className="status-icon status-sent" viewBox="0 0 16 11" width="16" height="11">
+                      <path d="M11.5 0.5L4.5 7.5L1.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M14.5 0.5L7.5 7.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.5"/>
+                    </svg>
+                  )}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!message.text && message.media && message.media.length > 0 && (
+          <div className="message-meta-standalone">{formatTime(message.date)}</div>
+        )}
+
+        {!message.text && (!message.media || message.media.length === 0) && (
+          <div className={`message-bubble ${cornerClass}`}>
+            <div className="message-text text-muted">(empty message)</div>
+            <div className="message-meta">
+              <span className="message-time">{formatTime(message.date)}</span>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
-  </div>
-));
+  );
+});
 
 // Stable empty array — prevents Zustand from scheduling re-renders
 // when messagesByChat[chatId] is undefined (Object.is([], []) === false)
 const EMPTY_MESSAGES: any[] = [];
 
-export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ accountId, chatId, chatTitle, highlightedMessageId, topicId, onBackToTopics }, ref) => {
+export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ accountId, chatId, chatTitle, chatType, highlightedMessageId, topicId, onBackToTopics }, ref) => {
   const messages = useMessagesStore((s) => s.messagesByChat[chatId] ?? EMPTY_MESSAGES);
   const containerRef = useRef<HTMLDivElement>(null);
   const pendingScrollRef = useRef<number | null>(null);
+
+  const isGroupChat = chatType === 'group';
+
+  // Compute grouping info for all messages
+  const groupInfos = useMemo(() => computeGrouping(messages), [messages]);
 
   // Expose scrollToMessage to parent
   useImperativeHandle(ref, () => ({
@@ -294,13 +423,15 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ ac
           <div className="messages-empty"><p>No messages in {chatTitle}</p></div>
         ) : (
           <div className="messages-list">
-            {messages.map((message) => (
+            {messages.map((message, index) => (
               <MessageItem
                 key={message.id}
                 message={message}
                 accountId={accountId}
                 chatId={chatId}
                 isHighlighted={highlightedMessageId === message.id}
+                isGroupChat={isGroupChat}
+                groupInfo={groupInfos[index]}
               />
             ))}
             <div ref={messagesEndRef} />

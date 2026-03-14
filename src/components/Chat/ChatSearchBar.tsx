@@ -12,6 +12,10 @@ export const ChatSearchBar = ({ value, onChange }: ChatSearchBarProps) => {
         placeholder="Search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
       />
     </div>
   );

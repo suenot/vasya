@@ -1,3 +1,7 @@
+/* ========================================
+   Telegram Desktop-style Message Bubbles
+   ======================================== */
+
 .messages-wrapper {
   display: flex;
   flex-direction: column;
@@ -24,30 +28,44 @@
   background: var(--hover-bg, rgba(0, 0, 0, 0.06));
 }
 
+/* Messages scroll area */
 .messages-container {
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 0 16px;
-  background: transparent;
+  padding: 0;
+  background: var(--bg-primary);
 }
 
 .messages-list {
-  padding: 16px 0;
+  padding: 8px 0 16px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  max-width: 800px;
+  max-width: 720px;
   width: 100%;
   margin: 0 auto;
+  padding-left: 16px;
+  padding-right: 16px;
 }
 
+/* ========================================
+   Message Row
+   ======================================== */
 .message {
   display: flex;
-  margin-bottom: 2px;
+  align-items: flex-end;
   width: 100%;
+  padding: 0 8px;
+}
+
+.message.group-start {
+  margin-top: 8px;
+}
+
+.message.group-continue {
+  margin-top: 2px;
 }
 
 .message.outgoing {
@@ -58,66 +76,217 @@
   justify-content: flex-start;
 }
 
+/* Highlighted message (from search) */
+.message.highlighted .message-bubble,
+.message.highlighted .message-media-standalone {
+  animation: highlight-flash 2s ease-out;
+}
+
+@keyframes highlight-flash {
+  0% { box-shadow: 0 0 0 3px var(--accent-color); }
+  100% { box-shadow: none; }
+}
+
+/* ========================================
+   Avatar Column (group incoming only)
+   ======================================== */
+.message-avatar-col {
+  flex-shrink: 0;
+  width: 36px;
+  margin-right: 8px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.message-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.message-avatar-spacer {
+  width: 36px;
+  height: 0;
+  flex-shrink: 0;
+}
+
+/* ========================================
+   Message Content Wrapper
+   ======================================== */
 .message-content {
   display: flex;
   flex-direction: column;
-  max-width: 85%;
-  align-items: flex-start;
+  max-width: 65%;
+  min-width: 80px;
 }
 
 .message.outgoing .message-content {
   align-items: flex-end;
 }
 
+.message.incoming .message-content {
+  align-items: flex-start;
+}
+
+/* ========================================
+   Sender Name (group chats)
+   ======================================== */
+.message-sender-name {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 12px;
+  margin-bottom: 2px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ========================================
+   Message Bubble
+   ======================================== */
 .message-bubble {
-  padding: 8px 14px;
-  border-radius: 12px;
+  padding: 6px 10px 6px 12px;
   word-wrap: break-word;
   word-break: break-word;
   overflow-wrap: break-word;
   position: relative;
-  display: flex;
-  flex-direction: column;
-  box-shadow: none;
-  border: 1px solid var(--border-color);
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
   font-family: var(--font-family);
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 14.5px;
+  line-height: 1.4;
+  box-shadow: 0 1px 2px var(--message-shadow);
 }
 
+/* --- Outgoing bubble colors --- */
 .message.outgoing .message-bubble {
-  background: var(--bg-secondary);
+  background: var(--message-out-bg);
   color: var(--text-primary);
-  border-color: transparent;
 }
 
+/* --- Incoming bubble colors --- */
 .message.incoming .message-bubble {
-  background: transparent;
+  background: var(--message-in-bg);
   color: var(--text-primary);
 }
 
-.message-text {
-  /* No special right margin needed for inline time if time goes below */
+/* ========================================
+   Bubble Corner Radius (Telegram-style)
+   Different radius on the "tail" corner,
+   with grouped messages having small
+   radius on adjacent corners.
+   ======================================== */
+
+/* --- Outgoing (right-aligned, tail on bottom-right) --- */
+.message-bubble.bubble-single-out {
+  border-radius: 14px 14px 4px 14px;
+}
+.message-bubble.bubble-first-out {
+  border-radius: 14px 14px 4px 14px;
+}
+.message-bubble.bubble-mid-out {
+  border-radius: 14px 4px 4px 14px;
+}
+.message-bubble.bubble-last-out {
+  border-radius: 14px 4px 4px 14px;
 }
 
+/* --- Incoming (left-aligned, tail on bottom-left) --- */
+.message-bubble.bubble-single-in {
+  border-radius: 14px 14px 14px 4px;
+}
+.message-bubble.bubble-first-in {
+  border-radius: 14px 14px 14px 4px;
+}
+.message-bubble.bubble-mid-in {
+  border-radius: 4px 14px 14px 4px;
+}
+.message-bubble.bubble-last-in {
+  border-radius: 4px 14px 14px 4px;
+}
+
+/* ========================================
+   Message Text
+   ======================================== */
+.message-text {
+  white-space: pre-wrap;
+  flex: 1 1 auto;
+  min-width: 0;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.message-text.text-muted {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* ========================================
+   Message Meta (time + status)
+   Inline at bottom-right of bubble,
+   floated after text content.
+   ======================================== */
 .message-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-size: 11px;
   color: var(--text-tertiary);
-  align-self: flex-end;
-  margin-top: 4px;
-  opacity: 0.8;
+  margin-left: 8px;
+  padding-top: 2px;
+  flex-shrink: 0;
   pointer-events: none;
   user-select: none;
+  opacity: 0.7;
+  white-space: nowrap;
+  align-self: flex-end;
 }
 
-.message.outgoing .message-meta {
+.message-time {
+  line-height: 1;
+}
+
+/* ========================================
+   Message Status (outgoing checkmarks)
+   ======================================== */
+.message-status {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 2px;
+}
+
+.status-icon {
+  width: 16px;
+  height: 11px;
+}
+
+.status-icon.status-sent {
   color: var(--text-tertiary);
 }
 
-:root[data-theme="dark"] .message.outgoing .message-meta {
-  color: var(--text-tertiary);
+.message.outgoing .status-icon.status-sent {
+  color: var(--accent-color);
+  opacity: 0.7;
 }
 
+.status-failed {
+  color: #e53935;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+/* ========================================
+   Loading / Empty states
+   ======================================== */
 .messages-loading,
 .messages-error,
 .messages-empty {
@@ -137,22 +306,26 @@
   font-size: 14px;
 }
 
-/* Standalone Media */
+/* ========================================
+   Standalone Media
+   ======================================== */
 .message-media-standalone {
-  border-radius: 12px;
   overflow: hidden;
   max-width: 400px;
   box-shadow: 0 1px 2px var(--message-shadow);
   margin-bottom: 2px;
 }
 
-.message.outgoing .message-media-standalone {
-  border-bottom-right-radius: 4px;
-}
+/* Apply same corner radius system to media */
+.message-media-standalone.bubble-single-out { border-radius: 14px 14px 4px 14px; }
+.message-media-standalone.bubble-first-out { border-radius: 14px 14px 4px 14px; }
+.message-media-standalone.bubble-mid-out { border-radius: 14px 4px 4px 14px; }
+.message-media-standalone.bubble-last-out { border-radius: 14px 4px 4px 14px; }
 
-.message.incoming .message-media-standalone {
-  border-bottom-left-radius: 4px;
-}
+.message-media-standalone.bubble-single-in { border-radius: 14px 14px 14px 4px; }
+.message-media-standalone.bubble-first-in { border-radius: 14px 14px 14px 4px; }
+.message-media-standalone.bubble-mid-in { border-radius: 4px 14px 14px 4px; }
+.message-media-standalone.bubble-last-in { border-radius: 4px 14px 14px 4px; }
 
 .media-photo img,
 .media-video video {
@@ -190,7 +363,7 @@
 .media-document,
 .media-other {
   padding: 10px;
-  background: var(--bg-secondary);
+  background: var(--message-in-bg);
   border-radius: 12px;
   margin-bottom: 4px;
   display: flex;
@@ -251,12 +424,10 @@
 }
 
 @keyframes pulse {
-
   0%,
   100% {
     opacity: 0.6;
   }
-
   50% {
     opacity: 1;
   }
@@ -324,4 +495,21 @@
 
 @keyframes mediaSpin {
   to { transform: rotate(360deg); }
+}
+
+/* ========================================
+   Blue theme: Telegram-native colors
+   Outgoing bubbles get the accent tint,
+   text inside stays white.
+   ======================================== */
+:root[data-theme="blue"] .message.outgoing .message-bubble {
+  color: #fff;
+}
+
+:root[data-theme="blue"] .message.outgoing .message-meta {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+:root[data-theme="blue"] .message.outgoing .status-icon.status-sent {
+  color: rgba(255, 255, 255, 0.7);
 }

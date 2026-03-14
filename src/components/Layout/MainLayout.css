@@ -11,6 +11,7 @@
 .sidebar {
   width: 320px;
   min-width: 320px;
+  min-height: 0;
   background: var(--sidebar-bg);
   border-right: 1px solid var(--border-color);
   display: flex;
@@ -107,7 +108,7 @@
   position: absolute;
   top: -6px;
   right: -10px;
-  background: #4fae4e;
+  background: var(--accent-color);
   color: white;
   min-width: 18px;
   height: 18px;
@@ -352,6 +353,7 @@
 /* Chat list */
 .chat-list {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 4px 4px;
 }

@@ -62,6 +62,10 @@ export const ApiSettings = ({ onSave }: ApiSettingsProps) => {
               value={apiId}
               onChange={(e) => setApiId(e.target.value)}
               autoFocus
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
             />
           </div>
 
@@ -76,6 +80,10 @@ export const ApiSettings = ({ onSave }: ApiSettingsProps) => {
               placeholder="abcdef1234567890abcdef1234567890"
               value={apiHash}
               onChange={(e) => setApiHash(e.target.value)}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
             />
           </div>
 
