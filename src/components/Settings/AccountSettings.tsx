@@ -12,13 +12,14 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useTranslation, useLanguageStore, LANGUAGE_LABELS, Language } from '../../i18n';
+import { useSettingsStore, StorageMode } from '../../store/settingsStore';
 import './AccountSettings.css';
 
 interface AccountSettingsProps {
   onClose: () => void;
 }
 
-type SettingsSection = 'general' | 'privacy' | 'data' | 'downloads' | 'stt' | 'hotkeys' | 'folders' | 'devices' | 'language';
+type SettingsSection = 'general' | 'privacy' | 'data' | 'downloads' | 'stt' | 'hotkeys' | 'folders' | 'devices' | 'language' | 'storage';
 
 /** Sortable drag-handle tab row */
 const SortableTabItem = ({ tab, label, isBuiltin, onToggle, onDelete }: {
@@ -97,6 +98,13 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [newFolderName, setNewFolderName] = useState('');
   const [selectedChatTypes, setSelectedChatTypes] = useState<ChatTypeFilter[]>([]);
+
+  // Storage mode
+  const { storageMode, backendUrl, backendApiKey, storageSwitching, storageError, setStorageMode } = useSettingsStore();
+  const [tempBackendUrl, setTempBackendUrl] = useState(backendUrl);
+  const [tempApiKey, setTempApiKey] = useState(backendApiKey);
+  const [tempStorageMode, setTempStorageMode] = useState<StorageMode>(storageMode);
+  const [urlValidationError, setUrlValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeSection === 'stt') {
@@ -711,6 +719,127 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
     );
   };
 
+  const handleStorageApply = async () => {
+    setUrlValidationError(null);
+
+    if (tempStorageMode === 'remote') {
+      try {
+        const parsed = new URL(tempBackendUrl);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          setUrlValidationError('URL must use http:// or https:// scheme');
+          return;
+        }
+      } catch {
+        setUrlValidationError('Please enter a valid URL (e.g. https://example.com)');
+        return;
+      }
+    }
+
+    try {
+      await setStorageMode(tempStorageMode, tempStorageMode === 'remote' ? tempBackendUrl : undefined, tempStorageMode === 'remote' ? tempApiKey : undefined);
+    } catch {
+      // error stored in storageError
+    }
+  };
+
+  const renderStorageSettings = () => (
+    <div className="settings-content">
+      <h2>{t('storage_mode_title' as any)}</h2>
+      <p className="settings-item-description" style={{ marginBottom: 16 }}>
+        {t('storage_mode_desc' as any)}
+      </p>
+
+      <div className="settings-group">
+        <div className="stt-provider-options">
+          <label className={`stt-provider-option ${tempStorageMode === 'local' ? 'active' : ''}`}>
+            <input
+              type="radio"
+              name="storage-mode"
+              value="local"
+              checked={tempStorageMode === 'local'}
+              onChange={() => setTempStorageMode('local')}
+            />
+            <div className="stt-provider-info">
+              <div className="stt-provider-name">{t('storage_mode_local' as any)}</div>
+              <div className="stt-provider-desc">{t('storage_mode_local_desc' as any)}</div>
+            </div>
+          </label>
+          <label className={`stt-provider-option ${tempStorageMode === 'remote' ? 'active' : ''}`}>
+            <input
+              type="radio"
+              name="storage-mode"
+              value="remote"
+              checked={tempStorageMode === 'remote'}
+              onChange={() => setTempStorageMode('remote')}
+            />
+            <div className="stt-provider-info">
+              <div className="stt-provider-name">{t('storage_mode_remote' as any)}</div>
+              <div className="stt-provider-desc">{t('storage_mode_remote_desc' as any)}</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      {tempStorageMode === 'remote' && (
+        <>
+          <div className="settings-group">
+            <h3>{t('storage_backend_url' as any)}</h3>
+            <input
+              type="text"
+              className="stt-language-select"
+              style={{ width: '100%', margin: '8px 0' }}
+              value={tempBackendUrl}
+              onChange={(e) => setTempBackendUrl(e.target.value)}
+              placeholder={t('storage_backend_url_placeholder' as any)}
+            />
+            {urlValidationError && (
+              <div className="form-error" style={{ marginTop: 4, fontSize: 13 }}>
+                {urlValidationError}
+              </div>
+            )}
+            {!urlValidationError && tempBackendUrl.startsWith('http://') && (
+              <div className="form-error" style={{ marginTop: 4, fontSize: 13, color: '#e8a838' }}>
+                Warning: this connection is not encrypted. Use https:// for production servers.
+              </div>
+            )}
+          </div>
+          <div className="settings-group">
+            <h3>{t('storage_api_key' as any)}</h3>
+            <input
+              type="password"
+              className="stt-language-select"
+              style={{ width: '100%', margin: '8px 0' }}
+              value={tempApiKey}
+              onChange={(e) => setTempApiKey(e.target.value)}
+              placeholder="Bearer token"
+            />
+          </div>
+        </>
+      )}
+
+      {storageError && (
+        <div className="form-error" style={{ marginBottom: 12 }}>
+          {t('storage_error' as any)}: {storageError}
+        </div>
+      )}
+
+      <button
+        className="stt-model-download-btn"
+        onClick={handleStorageApply}
+        disabled={storageSwitching}
+        style={{ marginTop: 8 }}
+      >
+        {storageSwitching ? t('storage_testing' as any) : t('storage_save' as any)}
+      </button>
+
+      {storageMode === tempStorageMode && !storageSwitching && !storageError && storageMode === 'remote' && (
+        <span className="stt-model-downloaded" style={{ marginLeft: 12 }}>
+          {t('storage_connected' as any)}
+        </span>
+      )}
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeSection) {
       case 'general': return renderGeneralSettings();
@@ -721,6 +850,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
       case 'hotkeys': return renderHotkeysSettings();
       case 'language': return renderLanguageSettings();
       case 'folders': return renderFoldersSettings();
+      case 'storage': return renderStorageSettings();
       case 'devices':
         return (<div className="settings-content"><h2>{t('nav_devices')}</h2><p className="settings-placeholder">{t('feature_in_dev')}</p></div>);
       default: return null;
@@ -827,6 +957,17 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
                   </svg>
                 </span>
                 {t('nav_devices')}
+              </button>
+              <button className={`settings-nav-item ${activeSection === 'storage' ? 'active' : ''}`} onClick={() => setActiveSection('storage')}>
+                <span className="settings-nav-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 7V4a2 2 0 0 1 2-2h8.5L20 7.5V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <path d="M2 15h10" />
+                    <path d="M9 18l3-3-3-3" />
+                  </svg>
+                </span>
+                {t('nav_storage_mode' as any)}
               </button>
               <button className={`settings-nav-item ${activeSection === 'language' ? 'active' : ''}`} onClick={() => setActiveSection('language')}>
                 <span className="settings-nav-icon">

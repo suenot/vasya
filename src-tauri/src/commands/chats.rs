@@ -40,16 +40,16 @@ pub async fn get_cached_chats(
     state: State<'_, Arc<RwLock<AppState>>>,
 ) -> Result<Vec<Chat>, String> {
     let state_guard = state.read().await;
-    let db = Arc::clone(
+    let storage = Arc::clone(
         state_guard
-            .db
+            .storage
             .as_ref()
-            .ok_or("Database not initialized")?,
+            .ok_or("Storage not initialized")?,
     );
     drop(state_guard);
 
-    let records = db.get_chats_async(account_id.clone()).await
-        .map_err(|e| format!("Failed to get chats from database: {}", e))?;
+    let records = storage.get_chats(&account_id).await
+        .map_err(|e| format!("Failed to get chats from storage: {}", e))?;
 
     let chats = records
         .into_iter()
@@ -84,7 +84,7 @@ pub async fn start_loading_chats(
             .as_ref()
             .ok_or("Client manager not initialized")?,
     );
-    let db = state_guard.db.as_ref().map(Arc::clone);
+    let storage = state_guard.storage.as_ref().map(Arc::clone);
 
     let wrapper = client_manager
         .get_client(&account_id)
@@ -177,7 +177,7 @@ pub async fn start_loading_chats(
             let client = wrapper.client.clone();
             let peer = peer.clone();
             let app = app.clone();
-            let db = db.clone();
+            let storage = storage.clone();
             let account_id = account_id.clone();
             let avatars_dir = avatars_dir.clone();
             let chat_type = chat_type.to_string();
@@ -202,19 +202,20 @@ pub async fn start_loading_chats(
                     cached_avatar
                 };
 
-                // Save to DB
-                if let Some(ref db) = db {
-                    if let Err(e) = db.save_chat_async(
-                        account_id,
-                        chat_id,
-                        chat_type,
-                        title,
-                        username,
-                        avatar_path,
-                        last_message_text,
-                        0,
-                    ).await {
-                        tracing::warn!(chat_id = chat_id, error = %e, "Failed to save chat to database");
+                // Save to storage
+                if let Some(ref storage) = storage {
+                    let record = crate::storage::ChatRecord {
+                        id: chat_id,
+                        account_id: account_id.clone(),
+                        chat_type: chat_type.clone(),
+                        title: title.clone(),
+                        username: username.clone(),
+                        avatar_path: avatar_path.clone(),
+                        last_message: last_message_text.clone(),
+                        unread_count: 0,
+                    };
+                    if let Err(e) = storage.save_chat(&record).await {
+                        tracing::warn!(chat_id = chat_id, error = %e, "Failed to save chat to storage");
                     }
                 }
             });

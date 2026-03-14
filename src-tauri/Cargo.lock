@@ -4618,6 +4618,7 @@ name = "telegram-client"
 version = "0.2.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "chrono",
  "grammers-client",
  "grammers-mtsender",
@@ -4643,6 +4644,7 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+ "url",
  "uuid",
 ]
 

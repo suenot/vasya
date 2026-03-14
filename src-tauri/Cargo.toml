@@ -68,6 +68,12 @@ json5 = "0.4"
 
 tauri-plugin-clipboard-manager = "2"
 
-# HTTP client for Deepgram STT API
+# HTTP client for Deepgram STT API and RemoteStorage
 # Use rustls instead of openssl for Android compatibility
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+# Async trait for storage abstraction
+async-trait = "0.1"
+
+# URL parsing for SSRF validation
+url = "2"

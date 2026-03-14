@@ -2,6 +2,7 @@
 
 mod telegram;
 mod database;
+mod storage;
 mod commands;
 
 use std::collections::HashMap;
@@ -11,7 +12,7 @@ use tauri::Manager;
 
 /// Application state shared across all Tauri commands
 pub struct AppState {
-    pub db: Option<Arc<database::Database>>,
+    pub storage: Option<Arc<dyn storage::DataStorage>>,
     pub client_manager: Option<Arc<telegram::TelegramClientManager>>,
     /// Pending login tokens (account_id -> LoginToken)
     pub pending_logins: Mutex<HashMap<String, grammers_client::types::LoginToken>>,
@@ -24,7 +25,7 @@ pub struct AppState {
 impl Default for AppState {
     fn default() -> Self {
         Self {
-            db: None,
+            storage: None,
             client_manager: None,
             pending_logins: Mutex::new(HashMap::new()),
             pending_passwords: Mutex::new(HashMap::new()),
@@ -71,6 +72,8 @@ pub fn run() {
             commands::delete_folder,
             commands::get_tabs,
             commands::save_tabs,
+            commands::get_storage_mode,
+            commands::set_storage_mode,
         ])
         .setup(|app| {
             let app_dir = app
@@ -108,8 +111,10 @@ pub fn run() {
                 state._logger_guard = Some(guard);
             }
 
-            let db_path = app_dir.join("telegram.db");
-            let db = database::Database::open(&db_path).expect("Failed to open database");
+            let storage_mode = storage::StorageMode::default(); // Local by default
+            let storage_box = tauri::async_runtime::block_on(
+                storage::create_storage(&storage_mode, &app_dir)
+            ).expect("Failed to create storage");
 
             let sessions_dir = app_dir.join("sessions");
             std::fs::create_dir_all(&sessions_dir).expect("Failed to create sessions directory");
@@ -149,7 +154,7 @@ pub fn run() {
                 }
 
                 let mut state = state.write().await;
-                state.db = Some(Arc::new(db));
+                state.storage = Some(Arc::from(storage_box));
                 state.client_manager = Some(cm_arc);
             });
 
