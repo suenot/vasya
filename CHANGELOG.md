@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.7.1] - 2026-03-15
+### Improvements
+- Landing: replaced two-button language switcher with single toggle button
+
 ## [0.7.0] - 2026-03-15
 ### Features
 - Create group chats, channels, and supergroups from sidebar
