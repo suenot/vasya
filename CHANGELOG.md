@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.7.0] - 2026-03-15
+### Features
+- Create group chats, channels, and supergroups from sidebar
+- New Chat button with dropdown menu (group, channel, secret chat)
+- Interface scale slider (50%–200%) with live zoom
+- Message text size selector (small / medium / large)
+- Notification sound toggle (silent notifications)
+- Message preview toggle (hide text in notifications)
+- Markdown rendering in merged message groups
+
+### Improvements
+- Settings controls fully wired to persistent store
+- i18n translations for all new features (en/ru)
+
 ## [0.6.0] - 2026-03-15
 ### Features
 - Voice & video calls with E2E encryption (DH key exchange)

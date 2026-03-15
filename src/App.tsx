@@ -75,6 +75,19 @@ function App() {
     }
   }, [setConnected, setDisconnected, setReconnecting]));
 
+  // Apply interface scale
+  const interfaceScale = useSettingsStore((s) => s.interfaceScale);
+  useEffect(() => {
+    document.documentElement.style.zoom = `${interfaceScale / 100}`;
+  }, [interfaceScale]);
+
+  // Apply message text size
+  const messageTextSize = useSettingsStore((s) => s.messageTextSize);
+  useEffect(() => {
+    const sizes = { small: '13px', medium: '14.5px', large: '16px' };
+    document.documentElement.style.setProperty('--message-font-size', sizes[messageTextSize]);
+  }, [messageTextSize]);
+
   // Применяем тему при монтировании и изменении настроек
   useEffect(() => {
     const effectiveTheme = themeSetting === 'system' ? systemTheme : themeSetting;

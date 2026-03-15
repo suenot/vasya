@@ -278,7 +278,7 @@ const MessageItem = memo(({ message, accountId, chatId, isHighlighted, isGroupCh
 
 // Memoized merged message item — renders a group of merged messages as one bubble
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const MergedMessageItem = memo(({ group, accountId: _aid, chatId: _cid, isHighlighted, isGroupChat, groupInfo, isSelected, isSelectionMode, onToggleSelect, onContextMenu }: {
+const MergedMessageItem = memo(({ group, accountId: _aid, chatId: _cid, isHighlighted, isGroupChat, groupInfo, isSelected, isSelectionMode, renderMarkdown, onToggleSelect, onContextMenu }: {
   group: MergedMessageGroup;
   accountId: string;
   chatId: number;
@@ -287,6 +287,7 @@ const MergedMessageItem = memo(({ group, accountId: _aid, chatId: _cid, isHighli
   groupInfo: GroupInfo;
   isSelected: boolean;
   isSelectionMode: boolean;
+  renderMarkdown: boolean;
   onToggleSelect: (id: number) => void;
   onContextMenu: (e: React.MouseEvent, message: MessageBase) => void;
 }) => {
@@ -365,13 +366,17 @@ const MergedMessageItem = memo(({ group, accountId: _aid, chatId: _cid, isHighli
             <div className="merged-expanded">
               {group.messages.map((m, i) => (
                 <div key={m.id} className="merged-expanded-part">
-                  <div className="message-text">{m.text}</div>
+                  <div className="message-text">
+                    {renderMarkdown && m.text ? <MarkdownRenderer text={m.text} /> : m.text}
+                  </div>
                   {i < group.messages.length - 1 && <div className="merged-separator" />}
                 </div>
               ))}
             </div>
           ) : (
-            <div className="message-text">{group.mergedText}</div>
+            <div className="message-text">
+              {renderMarkdown ? <MarkdownRenderer text={group.mergedText} /> : group.mergedText}
+            </div>
           )}
           <div className="message-meta">
             <span
@@ -927,6 +932,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ ac
                     groupInfo={groupInfos[index]}
                     isSelected={isGroupSelected}
                     isSelectionMode={isSelectionMode}
+                    renderMarkdown={shouldRenderMarkdown(message.id, group.mergedText)}
                     onToggleSelect={toggleMessage}
                     onContextMenu={handleContextMenu}
                   />

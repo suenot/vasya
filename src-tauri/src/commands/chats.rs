@@ -371,6 +371,167 @@ pub async fn delete_and_leave_chat(
     Ok(())
 }
 
+/// Create a new group chat (basic group)
+#[tauri::command]
+pub async fn create_group(
+    account_id: String,
+    title: String,
+    user_ids: Vec<i64>,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<i64, String> {
+    tracing::info!(account_id = %account_id, title = %title, "Creating group");
+
+    let wrapper = {
+        let state_guard = state.read().await;
+        let client_manager = state_guard
+            .client_manager
+            .as_ref()
+            .ok_or("Client manager not initialized")?;
+        client_manager
+            .get_client(&account_id)
+            .await
+            .ok_or("Client not found for this account")?
+    };
+
+    // Resolve user_ids to InputUser
+    let mut input_users = Vec::new();
+    for uid in &user_ids {
+        let peer = super::peer_resolve::resolve_peer(&wrapper, *uid).await?;
+        let peer_ref = PeerRef::from(&peer);
+        let input_user: tl::enums::InputUser = peer_ref.into();
+        input_users.push(input_user);
+    }
+
+    let request = tl::functions::messages::CreateChat {
+        users: input_users,
+        title,
+        ttl_period: None,
+    };
+
+    let result = wrapper.client.invoke(&request)
+        .await
+        .map_err(|e| format!("Failed to create group: {}", e))?;
+
+    // Extract chat ID from InvitedUsers result
+    let chat_id = match &result {
+        tl::enums::messages::InvitedUsers::Users(invited) => {
+            // The updates contain the new chat info
+            match &invited.updates {
+                tl::enums::Updates::Updates(u) => {
+                    // Find the chat in the chats list
+                    u.chats.first().map(|c| match c {
+                        tl::enums::Chat::Chat(chat) => -(chat.id as i64),  // Bot API format for groups
+                        tl::enums::Chat::Channel(ch) => {
+                            let id = ch.id as i64;
+                            -1_000_000_000_000 - id  // Bot API format for channels/supergroups
+                        }
+                        _ => 0,
+                    }).unwrap_or(0)
+                }
+                _ => 0,
+            }
+        }
+    };
+
+    tracing::info!(account_id = %account_id, chat_id = chat_id, "Group created successfully");
+    Ok(chat_id)
+}
+
+/// Create a new channel or supergroup (megagroup)
+#[tauri::command]
+pub async fn create_channel(
+    account_id: String,
+    title: String,
+    about: String,
+    is_megagroup: bool,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<i64, String> {
+    tracing::info!(account_id = %account_id, title = %title, is_megagroup = is_megagroup, "Creating channel");
+
+    let wrapper = {
+        let state_guard = state.read().await;
+        let client_manager = state_guard
+            .client_manager
+            .as_ref()
+            .ok_or("Client manager not initialized")?;
+        client_manager
+            .get_client(&account_id)
+            .await
+            .ok_or("Client not found for this account")?
+    };
+
+    let request = tl::functions::channels::CreateChannel {
+        broadcast: !is_megagroup,
+        megagroup: is_megagroup,
+        for_import: false,
+        forum: false,
+        title,
+        about,
+        geo_point: None,
+        address: None,
+        ttl_period: None,
+    };
+
+    let result = wrapper.client.invoke(&request)
+        .await
+        .map_err(|e| format!("Failed to create channel: {}", e))?;
+
+    // Extract channel ID from Updates
+    let chat_id = match &result {
+        tl::enums::Updates::Updates(u) => {
+            u.chats.first().map(|c| match c {
+                tl::enums::Chat::Channel(ch) => {
+                    let id = ch.id as i64;
+                    -1_000_000_000_000 - id
+                }
+                _ => 0,
+            }).unwrap_or(0)
+        }
+        _ => 0,
+    };
+
+    tracing::info!(account_id = %account_id, chat_id = chat_id, "Channel created successfully");
+    Ok(chat_id)
+}
+
+/// Get contacts (users from chat list)
+#[tauri::command]
+pub async fn get_contacts(
+    account_id: String,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<Vec<Chat>, String> {
+    let state_guard = state.read().await;
+    let storage = Arc::clone(
+        state_guard
+            .storage
+            .as_ref()
+            .ok_or("Storage not initialized")?,
+    );
+    drop(state_guard);
+
+    let records = storage.get_chats(&account_id).await
+        .map_err(|e| format!("Failed to get chats from storage: {}", e))?;
+
+    // Filter to only user-type chats (contacts)
+    let contacts = records
+        .into_iter()
+        .filter(|r| r.chat_type == "user")
+        .map(|r| Chat {
+            id: r.id,
+            title: r.title,
+            username: r.username,
+            unread_count: r.unread_count,
+            chat_type: r.chat_type,
+            last_message: r.last_message,
+            avatar_path: r.avatar_path,
+            is_forum: r.is_forum,
+            is_muted: false,
+        })
+        .collect();
+
+    Ok(contacts)
+}
+
 /// Helper function to download avatar for a peer.
 /// The `avatars_dir` must be an absolute path (derived from app_data_dir).
 /// Uses a semaphore to limit concurrent downloads and handles FLOOD_WAIT.

@@ -69,6 +69,29 @@ export const en = {
   delete_and_leave: 'Delete and Leave',
   delete_confirm: 'Are you sure you want to delete this chat and leave? This action cannot be undone.',
 
+  // New Chat
+  new_chat: 'New Chat',
+  new_group: 'New Group',
+  new_secret_chat: 'New Secret Chat',
+  new_channel: 'New Channel',
+
+  // New Chat Dialogs
+  create: 'Create',
+  creating: 'Creating...',
+  group_name: 'Group Name',
+  group_name_placeholder: 'Enter group name',
+  channel_name: 'Channel Name',
+  channel_name_placeholder: 'Enter channel name',
+  channel_description: 'Description',
+  channel_description_placeholder: 'Enter channel description (optional)',
+  select_contacts: 'Select contacts to add',
+  select_contact: 'Select a contact',
+  no_contacts_found: 'No contacts found',
+  create_group_title: 'New Group',
+  create_channel_title: 'New Channel',
+  create_secret_chat_title: 'New Secret Chat',
+  secret_chat_not_supported: 'Secret chats require end-to-end encryption which is not yet supported in this client.',
+
   // Chat Context Menu
   remove_from_favorites: 'Remove from Favorites',
   add_to_favorites: 'Add to Favorites',
@@ -101,6 +124,9 @@ export const en = {
   interface_scale: 'Interface Scale',
   message_text_size: 'Message Text Size',
   medium: 'Medium',
+  text_size_small: 'Small',
+  text_size_medium: 'Medium',
+  text_size_large: 'Large',
   notifications: 'Notifications',
   notification_sound: 'Notification Sound',
   message_preview: 'Message Preview',

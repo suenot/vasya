@@ -827,6 +827,40 @@
   margin: 4px 0;
 }
 
+/* New chat dropdown menu */
+.new-chat-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 2000;
+  min-width: 200px;
+  padding: 4px;
+  animation: contextMenuFadeIn 0.1s ease-out;
+}
+
+.new-chat-menu-item {
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.new-chat-menu-item:hover {
+  background: var(--sidebar-hover);
+}
+
 /* Message highlight (search navigation) */
 .message.highlighted .message-bubble,
 .message.highlighted .message-media-standalone {

@@ -71,6 +71,29 @@ export const ru: Record<TranslationKey, string> = {
   delete_and_leave: 'Удалить и выйти',
   delete_confirm: 'Вы уверены, что хотите удалить этот чат и выйти? Это действие нельзя отменить.',
 
+  // New Chat
+  new_chat: 'Новый чат',
+  new_group: 'Новая группа',
+  new_secret_chat: 'Секретный чат',
+  new_channel: 'Новый канал',
+
+  // New Chat Dialogs
+  create: 'Создать',
+  creating: 'Создание...',
+  group_name: 'Название группы',
+  group_name_placeholder: 'Введите название группы',
+  channel_name: 'Название канала',
+  channel_name_placeholder: 'Введите название канала',
+  channel_description: 'Описание',
+  channel_description_placeholder: 'Введите описание канала (необязательно)',
+  select_contacts: 'Выберите контакты для добавления',
+  select_contact: 'Выберите контакт',
+  no_contacts_found: 'Контакты не найдены',
+  create_group_title: 'Новая группа',
+  create_channel_title: 'Новый канал',
+  create_secret_chat_title: 'Секретный чат',
+  secret_chat_not_supported: 'Секретные чаты требуют сквозного шифрования, которое пока не поддерживается в этом клиенте.',
+
   // Chat Context Menu
   remove_from_favorites: 'Удалить из избранного',
   add_to_favorites: 'Добавить в избранное',
@@ -103,6 +126,9 @@ export const ru: Record<TranslationKey, string> = {
   interface_scale: 'Масштаб интерфейса',
   message_text_size: 'Размер текста сообщений',
   medium: 'Средний',
+  text_size_small: 'Маленький',
+  text_size_medium: 'Средний',
+  text_size_large: 'Большой',
   notifications: 'Уведомления',
   notification_sound: 'Звук уведомлений',
   message_preview: 'Предпросмотр сообщений',

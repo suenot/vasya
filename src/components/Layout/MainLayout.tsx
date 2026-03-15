@@ -5,6 +5,7 @@ import { AccountSwitcher } from '../Accounts/AccountSwitcher';
 import { MessageList, MessageListHandle } from '../Messages/MessageList';
 import { prioritizeChat } from '../../hooks/useMediaQueue';
 import { ChatList, ChatHeader, ChatHeaderHandle, ChatContextMenu, ChatInfoPanel, ChatFilters, TopicList } from '../Chat';
+import { NewChatButton } from '../Chat/NewChatButton';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useAccountsStore } from '../../store/accountsStore';
 import { useChatsStore } from '../../store/chatsStore';
@@ -805,6 +806,9 @@ export const MainLayout = () => {
           <div className={`sidebar-header-top ${isSearchExpanded ? 'search-active' : ''}`}>
             {!isSearchExpanded && <AccountSwitcher />}
             <div className={`sidebar-actions ${isSearchExpanded ? 'full-width' : ''}`}>
+              {!isSearchExpanded && (
+                <NewChatButton accountId={activeAccountId} onChatCreated={(chatId) => handleChatClick(chatId)} />
+              )}
               <div className={`search-container-inline ${isSearchExpanded || searchQuery ? 'expanded' : ''}`}>
                 <button
                   className="icon-button search-toggle"

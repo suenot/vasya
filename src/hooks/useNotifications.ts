@@ -18,6 +18,7 @@ import {
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useTauriEvent } from './useTauriEvent';
 import { useMuteStore } from '../store/muteStore';
+import { useSettingsStore } from '../store/settingsStore';
 
 interface NewMessageEvent {
   accountId: string;
@@ -38,6 +39,8 @@ interface NewMessageEvent {
 export function useNotifications(selectedChatId: number | null) {
   const permissionGranted = useRef(false);
   const isMuted = useMuteStore((s) => s.isMuted);
+  const notificationSound = useSettingsStore((s) => s.notificationSound);
+  const messagePreview = useSettingsStore((s) => s.messagePreview);
 
   // Request notification permission on mount
   useEffect(() => {
@@ -53,9 +56,13 @@ export function useNotifications(selectedChatId: number | null) {
     });
   }, []);
 
-  // Use a ref to always have the latest selectedChatId in the callback
+  // Use refs to always have the latest values in the callback
   const selectedChatIdRef = useRef(selectedChatId);
   selectedChatIdRef.current = selectedChatId;
+  const notificationSoundRef = useRef(notificationSound);
+  notificationSoundRef.current = notificationSound;
+  const messagePreviewRef = useRef(messagePreview);
+  messagePreviewRef.current = messagePreview;
 
   const handleNewMessage = useCallback(async (evt: NewMessageEvent) => {
     // Skip outgoing messages
@@ -82,7 +89,11 @@ export function useNotifications(selectedChatId: number | null) {
     // Build notification content
     const title = evt.senderName || 'New message';
     let body: string;
-    if (evt.text) {
+
+    if (!messagePreviewRef.current) {
+      // When message preview is disabled, hide the actual content
+      body = 'New message';
+    } else if (evt.text) {
       // Truncate long messages
       body = evt.text.length > 200 ? evt.text.slice(0, 200) + '...' : evt.text;
     } else if (evt.hasMedia) {
@@ -101,7 +112,8 @@ export function useNotifications(selectedChatId: number | null) {
       body = 'New message';
     }
 
-    sendNotification({ title, body });
+    // When notification sound is disabled, send a silent notification
+    sendNotification({ title, body, silent: !notificationSoundRef.current });
   }, [isMuted]);
 
   useTauriEvent<NewMessageEvent>('telegram:new-message', handleNewMessage);

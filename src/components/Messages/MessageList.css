@@ -223,6 +223,7 @@
   min-width: 0;
   user-select: text;
   -webkit-user-select: text;
+  font-size: var(--message-font-size, 14.5px);
 }
 
 .message-text.text-muted {

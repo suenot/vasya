@@ -27,8 +27,12 @@ interface SettingsStore {
   storageError: string | null;
   folderLayout: 'horizontal' | 'vertical';
   chatDensity: 'normal' | 'compact' | 'very-compact';
+  messageTextSize: 'small' | 'medium' | 'large';
   markdownMode: 'plain' | 'rendered';
   mergeMessages: boolean;
+  interfaceScale: number;
+  notificationSound: boolean;
+  messagePreview: boolean;
 
   setApiCredentials: (apiId: string, apiHash: string) => void;
   markConfigured: () => void;
@@ -37,8 +41,12 @@ interface SettingsStore {
   setStorageMode: (mode: StorageMode, url?: string, apiKey?: string) => Promise<void>;
   setFolderLayout: (layout: 'horizontal' | 'vertical') => void;
   setChatDensity: (density: 'normal' | 'compact' | 'very-compact') => void;
+  setMessageTextSize: (size: 'small' | 'medium' | 'large') => void;
   setMarkdownMode: (mode: 'plain' | 'rendered') => void;
   setMergeMessages: (merge: boolean) => void;
+  setInterfaceScale: (scale: number) => void;
+  setNotificationSound: (enabled: boolean) => void;
+  setMessagePreview: (enabled: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -55,8 +63,12 @@ export const useSettingsStore = create<SettingsStore>()(
       storageError: null,
       folderLayout: 'horizontal',
       chatDensity: 'normal',
+      messageTextSize: 'medium' as const,
       markdownMode: 'plain' as const,
       mergeMessages: true,
+      interfaceScale: 100,
+      notificationSound: true,
+      messagePreview: true,
 
       setApiCredentials: (apiId, apiHash) => set({
         apiId,
@@ -99,8 +111,12 @@ export const useSettingsStore = create<SettingsStore>()(
       },
       setFolderLayout: (layout) => set({ folderLayout: layout }),
       setChatDensity: (density) => set({ chatDensity: density }),
+      setMessageTextSize: (size) => set({ messageTextSize: size }),
       setMarkdownMode: (mode) => set({ markdownMode: mode }),
       setMergeMessages: (merge) => set({ mergeMessages: merge }),
+      setInterfaceScale: (scale) => set({ interfaceScale: scale }),
+      setNotificationSound: (enabled) => set({ notificationSound: enabled }),
+      setMessagePreview: (enabled) => set({ messagePreview: enabled }),
     }),
     {
       name: 'telegram-settings',

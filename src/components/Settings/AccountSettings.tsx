@@ -103,7 +103,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
   const [selectedChatTypes, setSelectedChatTypes] = useState<ChatTypeFilter[]>([]);
   const [selectedIcon, setSelectedIcon] = useState<string>('folder');
 
-  const { folderLayout, setFolderLayout, chatDensity, setChatDensity, mergeMessages, setMergeMessages } = useSettingsStore();
+  const { folderLayout, setFolderLayout, chatDensity, setChatDensity, mergeMessages, setMergeMessages, interfaceScale, setInterfaceScale, notificationSound, setNotificationSound, messagePreview, setMessagePreview, messageTextSize, setMessageTextSize } = useSettingsStore();
 
   const folderIcons: IconName[] = [
     'folder', 'all', 'contacts', 'chats', 'favorites', 
@@ -251,19 +251,55 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
           </label>
         </div>
 
-        <div className="settings-item clickable">
+        <div className="settings-item">
           <div className="settings-item-label">
             <div className="settings-item-title">{t('interface_scale')}</div>
-            <div className="settings-item-description">100%</div>
+            <div className="settings-item-description">{interfaceScale}%</div>
           </div>
-          <div className="settings-item-arrow">›</div>
         </div>
-        <div className="settings-item clickable">
+        <div className="interface-scale-slider" style={{ padding: '0 16px 12px' }}>
+          <input
+            type="range"
+            min={50}
+            max={200}
+            step={10}
+            value={interfaceScale}
+            onChange={(e) => setInterfaceScale(Number(e.target.value))}
+            style={{ width: '100%' }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+            <span>50%</span>
+            <span
+              style={{ cursor: 'pointer', textDecoration: 'underline' }}
+              onClick={() => setInterfaceScale(100)}
+            >100%</span>
+            <span>200%</span>
+          </div>
+        </div>
+        <div className="settings-item">
           <div className="settings-item-label">
             <div className="settings-item-title">{t('message_text_size')}</div>
-            <div className="settings-item-description">{t('medium')}</div>
           </div>
-          <div className="settings-item-arrow">›</div>
+        </div>
+        <div className="stt-provider-options" style={{ marginTop: '0', padding: '0 0 12px 0' }}>
+          <label className={`stt-provider-option ${messageTextSize === 'small' ? 'active' : ''}`} style={{ padding: '8px 12px' }}>
+            <input type="radio" name="text-size" value="small" checked={messageTextSize === 'small'} onChange={() => setMessageTextSize('small')} />
+            <div className="stt-provider-info">
+              <div className="stt-provider-name" style={{ fontSize: '13px' }}>{t('text_size_small' as any)}</div>
+            </div>
+          </label>
+          <label className={`stt-provider-option ${messageTextSize === 'medium' ? 'active' : ''}`} style={{ padding: '8px 12px' }}>
+            <input type="radio" name="text-size" value="medium" checked={messageTextSize === 'medium'} onChange={() => setMessageTextSize('medium')} />
+            <div className="stt-provider-info">
+              <div className="stt-provider-name" style={{ fontSize: '14px' }}>{t('text_size_medium' as any)}</div>
+            </div>
+          </label>
+          <label className={`stt-provider-option ${messageTextSize === 'large' ? 'active' : ''}`} style={{ padding: '8px 12px' }}>
+            <input type="radio" name="text-size" value="large" checked={messageTextSize === 'large'} onChange={() => setMessageTextSize('large')} />
+            <div className="stt-provider-info">
+              <div className="stt-provider-name" style={{ fontSize: '16px' }}>{t('text_size_large' as any)}</div>
+            </div>
+          </label>
         </div>
 
         <div className="settings-item toggle">
@@ -285,7 +321,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
             <div className="settings-item-title">{t('notification_sound')}</div>
           </div>
           <label className="toggle-switch">
-            <input type="checkbox" defaultChecked />
+            <input type="checkbox" checked={notificationSound} onChange={(e) => setNotificationSound(e.target.checked)} />
             <span className="toggle-slider"></span>
           </label>
         </div>
@@ -294,7 +330,7 @@ export const AccountSettings = ({ onClose }: AccountSettingsProps) => {
             <div className="settings-item-title">{t('message_preview')}</div>
           </div>
           <label className="toggle-switch">
-            <input type="checkbox" defaultChecked />
+            <input type="checkbox" checked={messagePreview} onChange={(e) => setMessagePreview(e.target.checked)} />
             <span className="toggle-slider"></span>
           </label>
         </div>
