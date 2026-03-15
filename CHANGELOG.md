@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.7.2] - 2026-03-15
+### Bug Fixes
+- Fix Android keyboard pushing content up (visualViewport API + CSS var)
+- Fix MessageInput safe-area-inset-bottom being overridden
+
 ## [0.7.1] - 2026-03-15
 ### Improvements
 - Landing: replaced two-button language switcher with single toggle button

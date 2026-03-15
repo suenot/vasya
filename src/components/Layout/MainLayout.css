@@ -1,7 +1,7 @@
 .main-layout {
   display: flex;
   height: 100vh;
-  height: 100dvh;
+  height: var(--app-height, 100dvh);
   width: 100vw;
   overflow: hidden;
   background-color: var(--bg-primary);
@@ -1065,7 +1065,7 @@
     /* Fix content to cover screen */
     top: 0;
     left: 0;
-    height: 100dvh;
+    height: var(--app-height, 100dvh);
     z-index: 20;
     /* Above sidebar */
   }
