@@ -4,23 +4,22 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/vasyapp.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=overlays-content" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
   <title>Vasyapp</title>
   <script>
-    // Fix Android keyboard pushing content up: use visualViewport to compute real height
-    function updateAppHeight() {
-      var vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-      document.documentElement.style.setProperty('--app-height', vh + 'px');
+    // Android keyboard: compute keyboard height via visualViewport and expose as CSS variable.
+    // With overlays-content the layout viewport never shrinks, so we track the offset ourselves.
+    function updateKeyboardInset() {
+      if (!window.visualViewport) return;
+      var kbHeight = window.innerHeight - window.visualViewport.height;
+      document.documentElement.style.setProperty('--keyboard-height', Math.max(0, kbHeight) + 'px');
     }
-    updateAppHeight();
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', updateAppHeight);
-      window.visualViewport.addEventListener('scroll', updateAppHeight);
-    } else {
-      window.addEventListener('resize', updateAppHeight);
+      window.visualViewport.addEventListener('resize', updateKeyboardInset);
+      window.visualViewport.addEventListener('scroll', updateKeyboardInset);
     }
   </script>
 </head>

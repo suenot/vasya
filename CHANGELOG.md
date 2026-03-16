@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.7.3] - 2026-03-16
+### Bug Fixes
+- Fix Android keyboard squishing entire app — switch from `resizes-content` to `overlays-content`
+- Keyboard now overlays content instead of compressing it; input lifts above keyboard via `--keyboard-height` CSS var
+- Auto-scroll messages to bottom when keyboard opens on mobile
+
 ## [0.7.2] - 2026-03-15
 ### Bug Fixes
 - Fix Android keyboard pushing content up (visualViewport API + CSS var)

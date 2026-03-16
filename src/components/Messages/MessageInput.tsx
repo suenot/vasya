@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, KeyboardEvent, ClipboardEvent, DragEvent } from 'react';
+import { useState, useCallback, useRef, useEffect, KeyboardEvent, ClipboardEvent, DragEvent } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { readImage } from '@tauri-apps/plugin-clipboard-manager';
 import { useMessagesStore } from '../../store/messagesStore';
@@ -32,8 +32,27 @@ export const MessageInput = ({ accountId, chatId, topicId, onMessageSent }: Mess
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
 
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // When virtual keyboard opens on mobile, scroll messages to bottom after layout adjusts
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const handleResize = () => {
+      // Scroll the nearest scrollable ancestor (.messages-container) to bottom
+      const wrapper = textareaRef.current?.closest('.content');
+      const container = wrapper?.querySelector('.messages-container');
+      if (container) {
+        requestAnimationFrame(() => {
+          container.scrollTop = container.scrollHeight;
+        });
+      }
+    };
+    vv.addEventListener('resize', handleResize);
+    return () => vv.removeEventListener('resize', handleResize);
+  }, []);
 
   const addOptimisticMessage = useMessagesStore((s) => s.addOptimisticMessage);
   const confirmOptimisticMessage = useMessagesStore((s) => s.confirmOptimisticMessage);
@@ -320,6 +339,7 @@ export const MessageInput = ({ accountId, chatId, topicId, onMessageSent }: Mess
         ) : (
           <>
             <textarea
+              ref={textareaRef}
               className="message-input"
               placeholder={mediaPreview ? t('add_caption') : t('write_message')}
               value={text}
