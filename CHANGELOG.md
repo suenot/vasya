@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.7.5] - 2026-04-02
+### Bug Fixes
+- Fix settings page on Android — sidebar and content no longer overlap on mobile
+- Settings sections now show one at a time with back navigation on small screens
+
 ## [0.7.4] - 2026-04-02
 ### Bug Fixes
 - Fix Android keyboard gap — move keyboard height compensation from input padding to container height

@@ -801,3 +801,78 @@ input:checked+.toggle-slider:before {
   background: rgba(124, 92, 252, 0.15);
   color: var(--accent-color, #7c5cfc);
 }
+
+/* Back button in settings-main — hidden on desktop */
+.settings-back-mobile {
+  display: none;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .account-settings {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .settings-sidebar {
+    width: 100%;
+    min-width: 100%;
+  }
+
+  .settings-main {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-primary);
+    z-index: 20;
+  }
+
+  /* When a section is selected, show content and hide sidebar */
+  .account-settings.mobile-content-open .settings-sidebar {
+    display: none;
+  }
+
+  .account-settings.mobile-content-open .settings-main {
+    display: flex;
+  }
+
+  /* Show back button on mobile */
+  .settings-back-mobile {
+    display: flex;
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 5;
+  }
+
+  .settings-back-mobile:hover {
+    background: var(--sidebar-hover);
+  }
+
+  /* Hide desktop close button on mobile (use back button instead) */
+  .account-settings.mobile-content-open .settings-close {
+    display: none;
+  }
+
+  /* Adjust content padding for mobile */
+  .settings-content {
+    padding: 48px 16px 24px 16px;
+    max-width: 100%;
+  }
+
+  .settings-section-title {
+    font-size: 13px;
+  }
+}
