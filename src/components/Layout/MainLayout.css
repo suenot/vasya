@@ -2,6 +2,7 @@
   display: flex;
   height: 100vh;
   height: 100dvh;
+  height: calc(100dvh - var(--keyboard-height, 0px));
   width: 100vw;
   overflow: hidden;
   background-color: var(--bg-primary);
@@ -1066,6 +1067,7 @@
     top: 0;
     left: 0;
     height: 100dvh;
+    height: calc(100dvh - var(--keyboard-height, 0px));
     z-index: 20;
     /* Above sidebar */
   }

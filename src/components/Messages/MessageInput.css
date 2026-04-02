@@ -4,8 +4,7 @@
   flex-direction: column;
   position: relative;
   padding: 0 16px 0 16px;
-  /* Lift input above Android keyboard (--keyboard-height set by visualViewport script in index.html) */
-  padding-bottom: max(16px, env(safe-area-inset-bottom), var(--keyboard-height, 0px));
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
   transition: padding-bottom 0.15s ease-out;
   max-width: 800px;
   width: 100%;
