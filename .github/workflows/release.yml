@@ -239,10 +239,23 @@ jobs:
             echo "✓ Signed successfully"
           done
 
+      - name: Read version from package.json
+        id: pkg
+        run: echo "version=$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Rename APK with version
+        env:
+          APP_VERSION: ${{ steps.pkg.outputs.version }}
+        run: |
+          for APK in $(find src-tauri/gen/android/app/build/outputs/apk -name "*.apk"); do
+            DIR=$(dirname "$APK")
+            mv "$APK" "$DIR/vasyapp-${APP_VERSION}-android-universal.apk"
+          done
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: vasyapp-android-apk
+          name: vasyapp-${{ steps.pkg.outputs.version }}-android-apk
           path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
 

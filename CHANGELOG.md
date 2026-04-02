@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.7.4] - 2026-04-02
+### Bug Fixes
+- Fix Android keyboard gap — move keyboard height compensation from input padding to container height
+- Chat no longer jumps up with empty space above keyboard on Android
+
 ## [0.7.3] - 2026-03-16
 ### Bug Fixes
 - Fix Android keyboard squishing entire app — switch from `resizes-content` to `overlays-content`
